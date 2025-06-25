@@ -75,3 +75,22 @@ TS_plot <- function(var_TS,time,title){
                  axis = "tblr")
   return(g)
 }
+
+# This function is to plot TE vs lag from var1 to var2
+# Input is the TE_df
+# And the name of the two variables varname1 and varname2
+# And title of the plot
+TE_lag_plot <- function(TE_df,title){
+  # Plot of TE
+  g_TE <- ggplot(data=TE_df,aes(x=Lag,y=TE))+
+    geom_line(linewidth = 0.4)+
+    geom_ribbon(aes(ymin = TE-TE_se,ymax=TE+TE_se),alpha=0.3,color=NA)+
+    geom_line(aes(y=cr_TE),linewidth=0.4,linetype = "dashed",color="royalblue2")+
+    my_theme+
+    labs(x = "Lag (days)",y="TE (%)",color="",fill="")+
+    ggtitle(title)
+  return(g_TE)
+}
+
+
+

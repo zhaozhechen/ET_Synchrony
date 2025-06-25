@@ -11,6 +11,7 @@ library(RTransferEntropy)
 library(entropy)
 library(future)
 library(lubridate)
+library(progress)
 
 source(here("02_TE_implementation","TE_implementation_functions.R"))
 source(here("05_Visualization","Plotting_functions.R"))
@@ -54,7 +55,14 @@ print_g(TS_plot(delta_ET,TS_time,bquote(Delta~ET)),
         paste0("Delta_ET_TS_",Site_test),
         8,6)
 
-# Run TE from var1 -> var2
+# Run TE from delta_SM to delta_ET
+SM_TE_df <- Cal_TE(delta_SM,delta_ET,max_lag = max_lag)
+VPD_TE_df <- Cal_TE(delta_VPD,delta_ET,max_lag = max_lag)
 
-
+# Plot TE vs lag
+g_SM_TE <- TE_lag_plot(SM_TE_df,bquote(Delta~SM~"->"~Delta~ET))
+g_VPD_TE <- TE_lag_plot(VPD_TE_df,bquote(Delta~VPD~"->"~Delta~ET))
+# Combine these two plots
+g_TE <- plot_grid(g_SM_TE,g_VPD_TE,nrow=1,align="hv")
+print_g(g_TE,paste0("TE_",Site_test),6,3)
 
