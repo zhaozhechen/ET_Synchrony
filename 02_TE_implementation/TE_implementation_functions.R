@@ -29,15 +29,38 @@ fold_outliers <- function(var,lower_qt,upper_qt){
   return(var)
 }
 
+# This function is to calculate binning edges when discretizing continuous data
+# Input are:
+# TS data to be processed: var
+# number of total bins for descretization: nbins
+# lower and upper quantile for the outliers
+# Output: the edges for binning
+get_binning_edges <- function(var,nbins,lower_qt = NULL, upper_qt = NULL){
+  # a tiny value to expand the two edges
+  ths <- 1e-6
+  # Remove outliers in the data
+  var <- fold_outliers(var,lower_qt,upper_qt)
+  # Non-zero values
+  nonzero <- var[var!=0 & !is.na(var)]
+  # Get the range of data for binning
+  lower_bd <- min(nonzero) - ths
+  upper_bd <- max(nonzero) + ths
+  # Get breaks
+  breaks <- seq(lower_bd,upper_bd,length.out = nbins)
+  return(breaks)
+}
+
+
+
+
 # This function is to adjust zero values in the data when discretizing continuous data, true zero values are put in the first bin
 # Input are:
-# TS data to be processed (x)
+# TS data to be processed: var
 # number of total bins for descretization: nbins
 # lower and upper quantile for the outliers
 # Output is: the bin of each value
 zero_adjustment <- function(var,nbins,lower_qt = NULL,upper_qt = NULL){
-  # a tiny value to expand the two edges
-  ths <- 1e-6
+  
   # Deal with outliers
   var <- fold_outliers(var,lower_qt,upper_qt)
   
@@ -143,6 +166,7 @@ cal_transfer_entropy <- function(var1,var2,nbins,lower_qt,upper_qt,lag,cr = FALS
 # lower and upper quantiles to deal with outliers
 Cal_TE_main <- function(var1,var2,max_lag,nbins,alpha=0.05,nshuffle = 300,upper_qt,lower_qt){
   # Calculate the total entropy for the whole sink variable
+  # Assuming H does not change largely across lags (this is to save computational time)
   H_sink <- cal_entropy(table(zero_adjustment(var2,nbins,lower_qt,upper_qt)))
   
   # Compute lag-independent critical TE if needed
