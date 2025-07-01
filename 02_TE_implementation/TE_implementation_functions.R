@@ -45,13 +45,10 @@ get_binning_edges <- function(var,nbins,lower_qt = NULL, upper_qt = NULL){
   # Get the range of data for binning
   lower_bd <- min(nonzero) - ths
   upper_bd <- max(nonzero) + ths
-  # Get breaks
-  breaks <- seq(lower_bd,upper_bd,length.out = nbins)
+  # Get breaks (note, for nbins, the edge should be nbins+1)
+  breaks <- seq(lower_bd,upper_bd,length.out = nbins + 1)
   return(breaks)
 }
-
-
-
 
 # This function is to adjust zero values in the data when discretizing continuous data, true zero values are put in the first bin
 # Input are:
@@ -59,11 +56,7 @@ get_binning_edges <- function(var,nbins,lower_qt = NULL, upper_qt = NULL){
 # number of total bins for descretization: nbins
 # lower and upper quantile for the outliers
 # Output is: the bin of each value
-zero_adjustment <- function(var,nbins,lower_qt = NULL,upper_qt = NULL){
-  
-  # Deal with outliers
-  var <- fold_outliers(var,lower_qt,upper_qt)
-  
+zero_adjustment <- function(var,nbins,lower_qt = NULL, upper_qt = NULL){
   # Initialize a vector to store results (location of bins)
   bin_loc <- rep(NA,length(var))
   # Index for zero values
@@ -72,25 +65,16 @@ zero_adjustment <- function(var,nbins,lower_qt = NULL,upper_qt = NULL){
   # Non-zero values
   var_nonzero <- var[nonzero_idx]
   
-  # Get the range of data for binning
-  lower_bd <- min(var_nonzero) - ths
-  upper_bd <- max(var_nonzero) + ths
-  
-  # Get breaks
-  breaks <- seq(lower_bd,upper_bd,length.out = nbins)
-  
-  # Discretize non-zero values to bins 2 and more
+  # Bin non-zero values into nbin-1 bins
+  breaks <- get_binning_edges(var_nonzero,nbins = nbins-1, lower_qt,upper_qt)
+  # Discretize non-zero values
   bins <- cut(var_nonzero,breaks = breaks,include.lowest = TRUE,labels = FALSE)
-
-  if(length(zero_idx != 0)){
-    bins <- bins + 1
-    # Assign 0 to the first bin
-    bin_loc[zero_idx] <- 1
-  }
-
-  # Assign non-zero values to their corresponding bins
+  # Shift the non-zero bin id by 1, Thus, zero values occupy the first bin
+  bins <- bins + 1
+  # Assign these bin loc to non-zero values
   bin_loc[nonzero_idx] <- bins
-  
+  # Assign bin 1 to zero values
+  bin_loc[zero_idx] <- 1
   return(bin_loc)
 }
 
@@ -175,7 +159,9 @@ Cal_TE_main <- function(var1,var2,max_lag,nbins,alpha=0.05,nshuffle = 300,upper_
     TE_shuffled_global <- replicate(nshuffle,{
       cal_transfer_entropy(var1,var2,nbins,lower_qt,upper_qt,lag=0,cr=TRUE)
     })
-    cr_TE_global <- quantile(TE_shuffled_global,1-alpha)
+    # Get critical TE based on T-statistics
+    t_crit <- qt(1-alpha,df = nshuffle - 1)
+    cr_TE_global <- mean(TE_shuffled_global,na.rm=TRUE) + t_crit*sd(TE_shuffled_global,na.rm=TRUE)
   }
   
   # Initialize a list to store all TE results
@@ -193,8 +179,9 @@ Cal_TE_main <- function(var1,var2,max_lag,nbins,alpha=0.05,nshuffle = 300,upper_
           cal_transfer_entropy(var1,var2,nbins,lower_qt,upper_qt,lag,cr=TRUE)
         })
         
-        # Critical TE, using quantile
-        cr_TE <- quantile(TE_shuffled,1-alpha)  
+        # Critical TE, using T-statistics
+        t_crit <- qt(1-alpha,nshuffle - 1)
+        cr_TE <- mean(TE_shuffled,na.rm=TRUE) + t_crit*sd(TE_shuffled,na.rm=TRUE)
       }else{
         cr_TE <- cr_TE_global
       }
