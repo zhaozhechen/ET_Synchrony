@@ -55,27 +55,48 @@ get_binning_edges <- function(var,nbins,lower_qt = NULL, upper_qt = NULL){
 # TS data to be processed: var
 # number of total bins for descretization: nbins
 # lower and upper quantile for the outliers
+# If ZFlag is TRUE: zero-adjustment is needed; if FALSE: no zero-adjustment
 # Output is: the bin of each value
-zero_adjustment <- function(var,nbins,lower_qt = NULL, upper_qt = NULL){
+zero_adjustment <- function(var,nbins,lower_qt = NULL, upper_qt = NULL,ZFlag){
   # Initialize a vector to store results (location of bins)
   bin_loc <- rep(NA,length(var))
-  # Index for zero values
+  # Index for zero and non-zero values
   zero_idx <- which(var == 0)
   nonzero_idx <- which(var!=0 & !is.na(var))
   # Non-zero values
   var_nonzero <- var[nonzero_idx]
   
-  # Bin non-zero values into nbin-1 bins
-  breaks <- get_binning_edges(var_nonzero,nbins = nbins-1, lower_qt,upper_qt)
-  # Discretize non-zero values
-  bins <- cut(var_nonzero,breaks = breaks,include.lowest = TRUE,labels = FALSE)
-  # Shift the non-zero bin id by 1, Thus, zero values occupy the first bin
-  bins <- bins + 1
-  # Assign these bin loc to non-zero values
+  # Determine number of bins for non-zero values
+  non_zero_bins <- if(ZFlag) nbins-1 else nbins
+  
+  # Get bin edges and bin the non-zero values
+  breaks <- get_binning_edges(var_nonzero,nbins=non_zero_bins,lower_qt,upper_qt)
+  bins <- cut(var_nonzero,breaks=breaks,include.lowest = TRUE,labels = FALSE,right = FALSE)
+  
+  # Shift bins if zero exists, and put zero in the first bin
+  if(ZFlag){
+    bins <- bins + 1
+    bin_loc[zero_idx] <- 1
+  }
+  # Assign the bins to non-zero values
   bin_loc[nonzero_idx] <- bins
-  # Assign bin 1 to zero values
-  bin_loc[zero_idx] <- 1
   return(bin_loc)
+}
+
+# This function is to shuffle matrix, for calculation of critical TE values
+# It shuffles each column in the matrix, while preserving the locations of NA
+# Input is the matrix to shuffle
+shuffle_matrix <- function(M){
+  # Initialize a blank matrix
+  M0 <- matrix(NA,nrow=nrow(M),ncol=ncol(M))
+  # Loop over the columns
+  for(i in 1:ncol(M)){
+    col_values <- M[,i]
+    non_na_idx <- which(!is.na(col_values))
+    shuffled_values <- sample(col_values[non_na_idx])
+    M0[non_na_idx,i] <- shuffled_values
+  }
+  return(M0)
 }
 
 # This function calculates entropy based on the bins
@@ -107,24 +128,31 @@ joint_entropy <- function(...){
 # # of bins for discretization: nbins
 # lower and upper quantiles to deal with outliers
 # cr is a logical value, if TRUE, it means this run is for critical values, then TS are shuffled
-cal_transfer_entropy <- function(var1,var2,nbins,lower_qt,upper_qt,lag,cr = FALSE){
+# ZFlag_Source is whether the Source needs zero adjustment (TURE or FALSE)
+# ZFlag_Sink is whether the Sink needs zero adjustment (TURE or FALSE)
+cal_transfer_entropy <- function(var1,var2,nbins,lower_qt,upper_qt,lag,cr = FALSE,ZFlag_Source,ZFlag_Sink){
   # Total length of the TS
   n <- length(var2)
   x_lag <- var1[1:(n-lag-1)]
   yt <- var2[(lag+2):n]
   yt_1 <- var2[(lag+1):(n-1)]
   
+  # Put them into a matrix
+  M <- cbind(x_lag,yt,yt_1)
+  
   if(cr){
     # This destroy the temporal structure while keeping the distribution of values intact
-    yt <- sample(yt)
-    yt_1 <- sample(yt_1)
-    x_lag <- sample(x_lag)
+    M <- shuffle_matrix(M)
+    x_lag <- M[,1]
+    yt <- M[,2]
+    yt_1 <- M[,3]
+
   }
 
   # Adjust for zero and get bins
-  x_lag_bins <- zero_adjustment(x_lag,nbins,lower_qt,upper_qt)
-  yt_bins <- zero_adjustment(yt,nbins,lower_qt,upper_qt)
-  yt_1_bins <- zero_adjustment(yt_1,nbins,lower_qt,upper_qt)
+  x_lag_bins <- zero_adjustment(x_lag,nbins,lower_qt,upper_qt,ZFlag_Source)
+  yt_bins <- zero_adjustment(yt,nbins,lower_qt,upper_qt,ZFlag_Sink)
+  yt_1_bins <- zero_adjustment(yt_1,nbins,lower_qt,upper_qt,ZFlag_Sink)
   
   # Calculate entropy
   H_ytyt_1 <- joint_entropy(yt_bins,yt_1_bins)
@@ -148,16 +176,19 @@ cal_transfer_entropy <- function(var1,var2,nbins,lower_qt,upper_qt,lag,cr = FALS
 # alpha: alpha level for significance inference (default=0.05)
 # nshuffle: number of shuffles to get critical TE values (default=300)
 # lower and upper quantiles to deal with outliers
-Cal_TE_main <- function(var1,var2,max_lag,nbins,alpha=0.05,nshuffle = 300,upper_qt,lower_qt){
+# ZFlag_Source is whether the Source needs zero adjustment (TURE or FALSE)
+# ZFlag_Sink is whether the Sink needs zero adjustment (TURE or FALSE)
+
+Cal_TE_main <- function(var1,var2,max_lag,nbins,alpha=0.05,nshuffle = 300,upper_qt,lower_qt,ZFlag_Source,ZFlag_Sink){
   # Calculate the total entropy for the whole sink variable
   # Assuming H does not change largely across lags (this is to save computational time)
-  H_sink <- cal_entropy(table(zero_adjustment(var2,nbins,lower_qt,upper_qt)))
+  H_sink <- cal_entropy(table(zero_adjustment(var2,nbins,lower_qt,upper_qt,ZFlag_Sink)))
   
   # Compute lag-independent critical TE if needed
   if(!Lag_Dependent_Crit){
     # Shuffle-based null distribution of TE
     TE_shuffled_global <- replicate(nshuffle,{
-      cal_transfer_entropy(var1,var2,nbins,lower_qt,upper_qt,lag=0,cr=TRUE)
+      cal_transfer_entropy(var1,var2,nbins,lower_qt,upper_qt,lag=0,cr=TRUE,ZFlag_Source = ZFlag_Source,ZFlag_Sink = ZFlag_Sink)
     })
     # Get critical TE based on T-statistics
     t_crit <- qt(1-alpha,df = nshuffle - 1)
@@ -170,13 +201,13 @@ Cal_TE_main <- function(var1,var2,max_lag,nbins,alpha=0.05,nshuffle = 300,upper_
     p <- progressor(along = 0:max_lag)
     # Calculate TE across all lags
     future_lapply(0:max_lag, function(lag){
-      TE_results <- cal_transfer_entropy(var1,var2,nbins,lower_qt,upper_qt,lag)
+      TE_results <- cal_transfer_entropy(var1,var2,nbins,lower_qt,upper_qt,lag,ZFlag_Source = ZFlag_Source,ZFlag_Sink = ZFlag_Sink)
       
       # Get Lag-dependent TE
       if(Lag_Dependent_Crit){
         # Shuffle-based null distribution of TE
         TE_shuffled <- future_replicate(nshuffle,{
-          cal_transfer_entropy(var1,var2,nbins,lower_qt,upper_qt,lag,cr=TRUE)
+          cal_transfer_entropy(var1,var2,nbins,lower_qt,upper_qt,lag,cr=TRUE,ZFlag_Source = ZFlag_Source,ZFlag_Sink = ZFlag_Sink)
         })
         
         # Critical TE, using T-statistics

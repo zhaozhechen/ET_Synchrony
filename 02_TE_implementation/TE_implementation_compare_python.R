@@ -57,7 +57,9 @@ SM_TE_df <- Cal_TE_main(var1 = AMF_df$SM,
                         alpha = alpha,
                         nshuffle = nshuffle,
                         upper_qt = upper_qt,
-                        lower_qt = lower_qt)
+                        lower_qt = lower_qt,
+                        ZFlag_Source = FALSE,
+                        ZFlag_Sink = FALSE)
 
 end_time <- Sys.time()
 print(end_time - start_time)
