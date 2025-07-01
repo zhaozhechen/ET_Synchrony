@@ -1,10 +1,6 @@
 # Author: Zhaozhe Chen
 # Date: 2025.6.30
 
-
-# Author: Zhaozhe Chen
-# Date: 2025.6.29
-
 # These are functions for pre-processing AMF dataset
 # 01_AMF_processing.R is the main function which outputs a df of required hourly variables
 
@@ -25,7 +21,7 @@ Var_QC <- function(varname,df,Coarse = FALSE){
   var_QC <- df[[varname_qc]]
   
   if(!varname_qc %in% names(df)){
-    warning(paste0("Variable",varname,"Does not have a QC file. Returning unmodified values"))
+    warning(paste("Variable",varname,"Does not have a QC file. Returning unmodified values"))
     return(var_values)
   }
   
@@ -66,18 +62,28 @@ Mean_QC_Var <- function(key_varname,df,Coarse = FALSE){
   return(qc_var_mean)
 }
 
-
-# This function is to extract all required variables and QC them
+# This function is the wrapped function to extract all required variables and QC them
 # Input includes:
 # var_ls: the list of variables to process
 # df: the dataset to be processed, usually the raw AMF dataset, with original variables and their QC variables
 Var_QC_all <- function(var_ls,df){
-  for(i in 1:length(var_ls)){
-    varname <- var_ls[i]
-    Var_QC(var,df)
+  # Conduct QC for all required variables, and get the mean of them after QC
+  results_ls <- lapply(var_ls, function(var){
+    Mean_QC_Var(var,df,Coarse = FALSE)
+  })
+
+  # Combine these variables into a data frame
+  Var_df <- as.data.frame(results_ls)
+  names(Var_df) <- var_ls
+  Var_df <- cbind(Site_ID = df$site_id,
+                  Time = ymd_hms(df$date_time,tz="UTC"),
+                  Var_df)
     
-  }
-  
+  # Set VPD, SWC and TS to 0 if negative
+  Var_df$VPD[Var_df$VPD < 0] <- 0
+  Var_df$SWC[Var_df$SWC < 0] <- 0
+  Var_df$TS[Var_df$TS < 0] <- 0
+  return(Var_df)
 }
 
 
