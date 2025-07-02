@@ -158,11 +158,12 @@ cal_transfer_entropy <- function(var1,var2,nbins,lower_qt,upper_qt,lag,cr = FALS
   # Put them into a matrix
   M <- cbind(x_lag,yt,yt_1)
   # Remove rows if there is any NA, to ensure complete observations
-  #M <- M[complete.cases(M),]
+  M <- M[complete.cases(M),]
 
   if(cr){
     # This destroy the temporal structure while keeping the distribution of values intact
     M <- shuffle_matrix(M)
+    M <- M[complete.cases(M),]
     x_lag <- M[,1]
     yt <- M[,2]
     yt_1 <- M[,3]
