@@ -43,8 +43,8 @@ get_binning_edges <- function(var,nbins,lower_qt = NULL, upper_qt = NULL){
   # Non-zero values
   nonzero <- var[var!=0 & !is.na(var)]
   # Get the range of data for binning
-  lower_bd <- min(nonzero) - ths
-  upper_bd <- max(nonzero) + ths
+  lower_bd <- min(nonzero)
+  upper_bd <- max(nonzero)
   # Get breaks (note, for nbins, the edge should be nbins+1)
   breaks <- seq(lower_bd,upper_bd,length.out = nbins + 1)
   return(breaks)
@@ -71,7 +71,7 @@ zero_adjustment <- function(var,nbins,lower_qt = NULL, upper_qt = NULL,ZFlag){
   
   # Get bin edges and bin the non-zero values
   breaks <- get_binning_edges(var_nonzero,nbins=non_zero_bins,lower_qt,upper_qt)
-  bins <- cut(var_nonzero,breaks=breaks,include.lowest = TRUE,labels = FALSE,right = FALSE)
+  bins <- cut(var_nonzero,breaks=breaks,include.lowest = TRUE,labels = FALSE)
   
   # Shift bins if zero exists, and put zero in the first bin
   if(ZFlag){
@@ -110,12 +110,29 @@ cal_entropy <- function(counts){
   return(H)
 }
 
+# This function takes one or more binned vectors and returns the joint bin 1D (1 to nbins^k)
+# This ensures that each individual combination of bins is transformed to a unique 1D value
+# Input include:
+# ...: The bin vectors for each of the TS variables
+# nbins: number of bins
+joint_bin_index <- function(...,nbins){
+  binned_list <- list(...)
+  # Convert binned vectors into joint indices
+  joint_index <- rep(0,length(binned_list[[1]]))
+  k <- length(binned_list)
+  for(i in 1:k){
+    # e.g., for 3D: (b1 - 1)*nbins^2 + (b2-1)^nbins + b3
+    joint_index <- joint_index + (binned_list[[i]]-1)*nbins^(k-i)
+  }
+  return(joint_index + 1)
+}
+
 # This function calculates joint Shannon entropy from multiple variables
 # Inputs are the vectors of the bins of which values in TS belong to
-joint_entropy <- function(...){
-  df <- data.frame(...)
+# Input is the joint_index, calculated from joint_bin_index
+joint_entropy <- function(joint_index){
   # Get the joint distribution of multiple variables
-  counts <- table(df)
+  counts <- table(joint_index)
   H <- cal_entropy(as.numeric(counts))
   return(H)
 }
@@ -139,26 +156,27 @@ cal_transfer_entropy <- function(var1,var2,nbins,lower_qt,upper_qt,lag,cr = FALS
   
   # Put them into a matrix
   M <- cbind(x_lag,yt,yt_1)
-  
+  # Remove rows if there is any NA, to ensure complete observations
+  M <- M[complete.cases(M),]
+
   if(cr){
     # This destroy the temporal structure while keeping the distribution of values intact
     M <- shuffle_matrix(M)
     x_lag <- M[,1]
     yt <- M[,2]
     yt_1 <- M[,3]
-
   }
 
   # Adjust for zero and get bins
-  x_lag_bins <- zero_adjustment(x_lag,nbins,lower_qt,upper_qt,ZFlag_Source)
-  yt_bins <- zero_adjustment(yt,nbins,lower_qt,upper_qt,ZFlag_Sink)
-  yt_1_bins <- zero_adjustment(yt_1,nbins,lower_qt,upper_qt,ZFlag_Sink)
+  x_lag_bins <- zero_adjustment(M[,1],nbins,lower_qt,upper_qt,ZFlag_Source)
+  yt_bins <- zero_adjustment(M[,2],nbins,lower_qt,upper_qt,ZFlag_Sink)
+  yt_1_bins <- zero_adjustment(M[,3],nbins,lower_qt,upper_qt,ZFlag_Sink)
   
   # Calculate entropy
-  H_ytyt_1 <- joint_entropy(yt_bins,yt_1_bins)
-  H_yt_1_x_lag <- joint_entropy(yt_1_bins,x_lag_bins)
-  H_yt_1 <- cal_entropy(table(yt_1_bins))
-  H_y_yt_1_x_lag <- joint_entropy(yt_bins,yt_1_bins,x_lag_bins)
+  H_ytyt_1 <- joint_entropy(joint_bin_index(yt_bins,yt_1_bins,nbins = nbins))
+  H_yt_1_x_lag <- joint_entropy(joint_bin_index(yt_1_bins,x_lag_bins,nbins = nbins))
+  H_yt_1 <- joint_entropy(joint_bin_index(yt_1_bins,nbins=nbins))
+  H_y_yt_1_x_lag <- joint_entropy(joint_bin_index(yt_bins,yt_1_bins,x_lag_bins,nbins = nbins))
 
   # Transfer entropy
   TE <- H_ytyt_1 + H_yt_1_x_lag - H_yt_1 - H_y_yt_1_x_lag
