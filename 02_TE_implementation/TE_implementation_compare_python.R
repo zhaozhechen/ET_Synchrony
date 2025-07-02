@@ -34,7 +34,7 @@ Output_path <- here("02_TE_implementation","Results/")
 nbin <- 11 # Number of bins for TE discritization of continuous data (e.g., SM)
 max_lag <- 90 # Maximum lag to consider (This should be adjusted according to the processes and the temporal resolution of data)
 Lag_Dependent_Crit <- TRUE # Determine if critical TE is lag-dependent
-nshuffle <- 300 # Number of shuffles (bootstrap) for critical TE for statistical inference
+nshuffle <- 500 # Number of shuffles (bootstrap) for critical TE for statistical inference
 alpha <- 0.05 # Confidence level for critical TE
 # Set parallel session
 plan(multisession,workers = availableCores()-1)

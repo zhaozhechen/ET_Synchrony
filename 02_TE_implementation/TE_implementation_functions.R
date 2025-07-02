@@ -37,14 +37,14 @@ fold_outliers <- function(var,lower_qt,upper_qt){
 # Output: the edges for binning
 get_binning_edges <- function(var,nbins,lower_qt = NULL, upper_qt = NULL){
   # a tiny value to expand the two edges
-  ths <- 1e-6
+  ths <- 1e-4
   # Remove outliers in the data
   var <- fold_outliers(var,lower_qt,upper_qt)
   # Non-zero values
   nonzero <- var[var!=0 & !is.na(var)]
   # Get the range of data for binning
-  lower_bd <- min(nonzero)
-  upper_bd <- max(nonzero)
+  lower_bd <- min(nonzero) - ths
+  upper_bd <- max(nonzero) + ths
   # Get breaks (note, for nbins, the edge should be nbins+1)
   breaks <- seq(lower_bd,upper_bd,length.out = nbins + 1)
   return(breaks)
@@ -71,7 +71,7 @@ zero_adjustment <- function(var,nbins,lower_qt = NULL, upper_qt = NULL,ZFlag){
   
   # Get bin edges and bin the non-zero values
   breaks <- get_binning_edges(var_nonzero,nbins=non_zero_bins,lower_qt,upper_qt)
-  bins <- cut(var_nonzero,breaks=breaks,include.lowest = TRUE,labels = FALSE)
+  bins <- cut(var_nonzero,breaks=breaks,include.lowest = TRUE,labels = FALSE,right = FALSE)
   
   # Shift bins if zero exists, and put zero in the first bin
   if(ZFlag){
@@ -124,6 +124,7 @@ joint_bin_index <- function(...,nbins){
     # e.g., for 3D: (b1 - 1)*nbins^2 + (b2-1)^nbins + b3
     joint_index <- joint_index + (binned_list[[i]]-1)*nbins^(k-i)
   }
+  joint_index <- joint_index[!is.na(joint_index)]
   return(joint_index + 1)
 }
 
