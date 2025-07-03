@@ -16,6 +16,64 @@ delta_TS <- function(df,varname){
   return(delta_var)
 }
 
+df <- read.csv("D:/OneDrive - UW-Madison/Research/ET Synchrony/Github repo/ET_Synchrony/00_Data/AMF_hourly_test_US-Ne1.csv")
+
+test <- Cal_diurnal_anomaly(df,"LE_F",5)
+
+# This function calculates diurnal anomaly to remove diurnal cycles of TS
+# The anomaly signal is obtained by taking the difference between the values of a variable at a specific time of the day
+# From the average value over the following n days of the same variable at the same time.
+# This method follows (Ruddell and Kumar, 2009)
+# The input include:
+# df: Hourly scale data frame, including a column called "Time"
+# varname: The target variable name
+# windowdays: The size of window in days
+# Requires the package lubridate
+Cal_diurnal_anomaly <- function(df,varname,windowdays){
+  # Convert Time to POSIXct Time
+  df <- df %>%
+    mutate(Time = if_else(
+      nchar(Time) == 10, # If it is YYYY-MM-DD
+      paste(Time,"00:00:00"),
+      Time
+    )) %>%
+    mutate(Time = ymd_hms(Time,tz="UTC")) %>%
+  # Extract hour of the day
+    mutate(Hour = hour(Time),
+           Date=as.Date(Time)) %>%
+    arrange(Time)
+  
+  # Add row index for fast lookup
+  df$row_ID <- 1:nrow(df)
+  
+  # Loop over the 24 hours
+  for(h in 0:23){
+    # Get data for this hour
+    df_h <- df %>%
+      filter(Hour == h)
+    # Get all dates for this specific hour
+    date_h <- df_h$Date
+    
+    # Initialize a vector to store anomaly
+    anomaly <- rep(NA,nrow(df))
+    
+    for(i in 1:length(date_h)){
+      # Get the start and end of the window
+      t0 <- date_h[i]
+      tend <- t0 + days(windowdays)
+      idx <- which(df$Hour == h & df$Date >= t0 & df$Date <= tend)
+
+      if(length(idx) > 1 & !is.na(df[[varname]][df_h$row_ID[i]])){
+        anomaly[df_h$row_ID[i]] <- df[[varname]][df_h$row_ID[i]] - mean(df[[varname]][idx],na.rm=TRUE)
+      }
+     print(i) 
+    }
+  }
+  df$anomaly <- anomaly
+  return(df %>% select(-row_ID))
+}
+
+
 # This function is to deal with outliers before discretization of continuous data
 # Input include:
 # The time series need to be discritized: var
