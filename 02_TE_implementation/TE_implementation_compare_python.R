@@ -82,4 +82,3 @@ g <- ggplot(TE_df,aes(TE_R,TE_Py))+
            label=paste("R2 =",R2),
            size=6)
 print_g(g,"TE_comparison_R_vs_python",4,4)
-

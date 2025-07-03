@@ -16,8 +16,23 @@ delta_TS <- function(df,varname){
   return(delta_var)
 }
 
-df <- read.csv("D:/OneDrive - UW-Madison/Research/ET Synchrony/Github repo/ET_Synchrony/00_Data/AMF_hourly_test_US-Ne1.csv")
+# This function is to standardize time, when 00:00:00 is removed in Time
+# Input the dataframe, which should include a Time column as "YYYY-MM-DD hh:mm:ss"
+Standardize_time <- function(df){
+  # Convert Time to POSIXct Time
+  df <- df %>%
+    mutate(Time = if_else(
+      nchar(Time) == 10, # If it is YYYY-MM-DD
+      paste(Time,"00:00:00"),
+      Time
+    )) %>%
+    mutate(Time = ymd_hms(Time,tz="UTC")) %>%
+    # Extract hour of the day
+    mutate(Hour = hour(Time),
+           Date=as.Date(Time)) 
+}
 
+df <- read.csv("D:/OneDrive - UW-Madison/Research/ET Synchrony/Github repo/ET_Synchrony/00_Data/AMF_hourly_test.csv")
 test <- Cal_diurnal_anomaly(df,"LE_F",5)
 
 # This function calculates diurnal anomaly to remove diurnal cycles of TS
@@ -30,18 +45,8 @@ test <- Cal_diurnal_anomaly(df,"LE_F",5)
 # windowdays: The size of window in days
 # Requires the package lubridate
 Cal_diurnal_anomaly <- function(df,varname,windowdays){
-  # Convert Time to POSIXct Time
-  df <- df %>%
-    mutate(Time = if_else(
-      nchar(Time) == 10, # If it is YYYY-MM-DD
-      paste(Time,"00:00:00"),
-      Time
-    )) %>%
-    mutate(Time = ymd_hms(Time,tz="UTC")) %>%
-  # Extract hour of the day
-    mutate(Hour = hour(Time),
-           Date=as.Date(Time)) %>%
-    arrange(Time)
+
+  
   
   # Add row index for fast lookup
   df$row_ID <- 1:nrow(df)
