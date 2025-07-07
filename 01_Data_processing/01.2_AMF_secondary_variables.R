@@ -1,18 +1,15 @@
 # Author: Zhaozhe Chen
-# Update date: 2025.7.6
+# Update date: 2025.7.7
 
-# This code is to calculate secondary variables from cleaned AmeriFlux dataset
-# The calculated secondary variables include:
-# Soil water potential
-# PET
-# 
+# This code matches soil properties to AMF sites
+# And calculates secondary variables from cleaned AMF dataset
+# Including: Growing season index (GSI)
+
 # ---------- Global ---------------
 library(here)
 
 # Input path to AMF site info
 site_info <- read.csv(here("00_data","ameriflux_site_info.csv"))
-# Input path to cleaned AMF dataset
-AMF_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Data/02_AMF_cleaned/AMF_Hourly/"
 # Input path to Soil properties
 # Note: soil texture classification and code can be found in https://ftp.ems.psu.edu/pub/data/1995-0795/textclass.ascii
 Soil_path <- here("00_Data")
@@ -23,7 +20,7 @@ Soil_lookup <- read.csv(here("00_Data","Soil_texture_lookup.csv"))
 source(here("01_Data_processing","AMF_processing_functions.R")) 
   
 # ------ Main ----------
-# Extract soil texture from nc files
+# Match soil texture to AMF sites ======
 # Note: only took the first layer
 texture <- extract_nc(Soil_path,"Texture")
 
@@ -44,12 +41,7 @@ for(i in 1:nrow(site_info)){
   texture_all <- c(texture_all,site_texture)
 }
 site_info$soil_texture <- texture_all
-
-
-
-
-
-# Get file names for the hourly AMF dataset
-#file_names <- list.files(AMF_path,full.names = TRUE)
-# Read in hourly AMF dataset
-#AMF_df <- read.csv(file_names[arrayid])
+# Match corresponding soil hydraulic traits with the sites
+site_info_update <- site_info %>%
+  left_join(Soil_lookup,by=c("soil_texture" = "Class.code"))
+write.csv(site_info_update,here("00_Data","ameriflux_site_info_update.csv"))
