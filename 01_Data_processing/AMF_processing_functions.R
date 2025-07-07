@@ -2,7 +2,11 @@
 # Date: 2025.7.6
 
 # These are functions for pre-processing AMF dataset
-# 01_AMF_processing.R is the main function which outputs a df of required hourly variables
+# 01.1_AMF_processing.R is the main function which outputs a df of required hourly variables
+# 01.2_AMF_secondary_variables.R is the main function which XXXX
+
+library(dplyr)
+library(ncdf4)
 
 # Get required variable after QC
 # For fine resolution (Hourly or Half-hourly), QC = 0 and QC = 1 were kept
@@ -11,7 +15,6 @@
 # The exact variable name (which should be the sub-variable name for a variable group)
 # df: The data frame for processing, normally the raw AMF dataset
 # Coarse: whether the temporal resolution is coarse or fine (sub-daily). This should be a logical value (TRUE or FALSE)
-
 Var_QC <- function(varname,df,Coarse = FALSE){
   # Get the variable
   var_values <- df[[varname]]
@@ -102,20 +105,41 @@ Standardize_time <- function(df){
            Date=as.Date(Time)) 
 }
 
-# This function finds the nearest grid cell and gets values from that cell
+# This function finds the nearest grid cell that is not 0 and gets value from that cell
 # The input include:
 # site_lat: the latitude of the site
 # site_lon: the longitude of the site
 # grid_value: the values to be matched to, as a matrix
 # grid_lat and grid_lon: the corresponding coordinators for the matrix
-get_nearest_value <- function(site_lat,site_lon,grid_value,grid_lat,grid_lon){
+# max_r: the search radius for values
+get_nearest_value <- function(site_lat,site_lon,grid_value,grid_lat,grid_lon,max_r){
   # Find the index for the nearest lat
   lat_idx <- which.min(abs(site_lat - grid_lat))
   # Find the index for the nearest lon
   lon_idx <- which.min(abs(site_lon - grid_lon))
   # Get the value from that cell
   value <- grid_value[lat_idx,lon_idx]
-  return(value)
+  # Check if this value is NA
+  if(!is.na(value) && value !=0){
+    return(value)
+  }else{
+    # If the center cell is 0, search for nearby cells
+    for(r in 1:max_r){
+     lat_range <- (lat_idx - r):(lat_idx + r)
+     lon_range <- (lon_idx - r): (lon_idx + r)
+     
+     for(i in lat_range){
+       for(j in lon_range){
+         val <- grid_value[i,j]
+         if(!is.na(val) && val !=0){
+           return(val)
+         }
+       }
+     }
+    }
+    # If all nearby values are 0 or NA, return NA
+    return(NA)
+  }
 }
 
 # This function is to extract lon,lat,and values from nc files
