@@ -86,5 +86,19 @@ Var_QC_all <- function(var_ls,df){
   return(Var_df)
 }
 
-
+# This function is to standardize time, when 00:00:00 is removed in Time
+# Input the dataframe, which should include a Time column as "YYYY-MM-DD hh:mm:ss"
+Standardize_time <- function(df){
+  # Convert Time to POSIXct Time
+  df <- df %>%
+    mutate(Time = if_else(
+      nchar(Time) == 10, # If it is YYYY-MM-DD
+      paste(Time,"00:00:00"),
+      Time
+    )) %>%
+    mutate(Time = ymd_hms(Time,tz="UTC")) %>%
+    # Extract hour of the day
+    mutate(Hour = hour(Time),
+           Date=as.Date(Time)) 
+}
 
