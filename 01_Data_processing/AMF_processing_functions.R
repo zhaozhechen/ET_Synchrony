@@ -166,7 +166,7 @@ extract_nc <- function(nc_path,varname){
 # siteinfo: siteinfo including the soil properties
 # Site_ID: ID of this site (note: this should be revised later for full AMF dataset)
 Cal_psisoil <- function(df,siteinfo,Site_ID){
-  # air-entry water potential Unit: Jkg-1
+  # air-entry water potential Unit: kPa
   psi_ae <- siteinfo$psi.ae[siteinfo$site_id == Site_ID]
   # porosity
   porosity <- siteinfo$porosity[siteinfo$site_id == Site_ID]

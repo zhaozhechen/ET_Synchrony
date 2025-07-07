@@ -21,6 +21,10 @@ Site_ID <- "US-Ne1"
 # Calculate soil water potential based on soil moisture and soil texture
 AMF_df$psi_soil <- Cal_psisoil(AMF_df,site_info,Site_ID)
 
+# Calculate ET convert unit from Wm-2 to mmday-1
+AMF_df$ET <- AMF_df$LE_F * 3600 *24/(2.45*10^6)
+AMF_df$ET[AMF_df$ET < 0] <- 0
+
 # Output this df
 write.csv(AMF_df,here("00_Data","Data_processed",paste0("AMF_hourly_",Site_ID,".csv")))
 

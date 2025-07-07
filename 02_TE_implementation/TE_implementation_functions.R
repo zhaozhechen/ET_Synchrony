@@ -51,15 +51,6 @@ Standardize_time <- function(df){
 # Example: df <- read.csv(here("00_Data","AMF_hourly_test.csv"))
 # test <- Cal_diurnal_anomaly(df,"SWC",5)
 Cal_diurnal_anomaly <- function(df,varname,windowdays){
-  # Make sure the time is in the correct POSIXct format
-  df <- df %>%
-    mutate(Time = if_else(
-      nchar(Time) == 10, # If it is YYYY-MM-DD
-      paste(Time,"00:00:00"),
-      Time
-    )) %>%
-    mutate(Time = ymd_hms(Time,tz="UTC"))
-  
   # Complete the full sequence of hourly time steps
   # This is because there may be missing rows in the df
   full_time <- data.frame(Time = seq(from = floor_date(min(df$Time),unit="day"),
@@ -81,7 +72,7 @@ Cal_diurnal_anomaly <- function(df,varname,windowdays){
   # Keep only the original rows
   df_out <- df_full %>%
     filter(Time %in% df$Time)
-  return(df_out)
+  return(df_out[[paste0(varname,"_anomaly")]])
 }
 
 # This function is to deal with outliers before discretization of continuous data
