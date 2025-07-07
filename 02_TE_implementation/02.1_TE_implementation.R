@@ -55,8 +55,25 @@ df$delta_log10_psi_soil_anomaly <-
 df$delta_ET_anomaly <-
   Cal_diurnal_anomaly(df,"delta_ET",5)
 
+# TE from delta_log10_psi_soil_anomaly -> delta_ET_anomaly
+# Timing the TE calculation
+start_time <- Sys.time()
+TE_df <- Cal_TE_main(var1 = df$delta_log10_psi_soil_anomaly,
+                     var2 = df$delta_ET_anomaly,
+                     max_lag = max_lag,
+                     nbins = n_bin,
+                     alpha = alpha,
+                     nshuffle = nshuffle,
+                     upper_qt = upper_qt,
+                     lower_qt = lower_qt)
+end_time <- Sys.time()
+run_time <- as.character(end_time - start_time)
+writeLines(run_time,con=paste0(Output_path,"/TE_log.txt"))
+write.csv(TE_df,paste0(Output_path,"/TE_df_US-Ne1_hourly_psi_ET.csv"))
+g <- TE_lag_plot(TE_df,"psi->ET","None")
+print_g(g,"TE_US-Ne1_hourly_psi_ET",6,4)
 
-# Plot TS of these variables
+# Plot TS of all variables
 # For psi_soil
 g1 <- TS_plot(AMF_df$psi_soil,AMF_df$Time,bquote(psi[soil]~"("~kPa~")"))
 print_g(g1,paste0(Site_ID,"_psi_soil_TS"),
@@ -85,7 +102,5 @@ print_g(g6,paste0(Site_ID,"_delta_log10_psi_soil_anomaly_TS"),
 g7 <- TS_plot(df$delta_ET_anomaly,df$Time,bquote(Delta~ET~anomaly~"("~mm/day~")"))
 print_g(g7,paste0(Site_ID,"_delta_ET_anomaly_TS"),
         10,6)
-
-
 
 
