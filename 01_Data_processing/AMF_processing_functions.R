@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Date: 2025.6.30
+# Date: 2025.7.6
 
 # These are functions for pre-processing AMF dataset
 # 01_AMF_processing.R is the main function which outputs a df of required hourly variables
@@ -102,3 +102,34 @@ Standardize_time <- function(df){
            Date=as.Date(Time)) 
 }
 
+# This function finds the nearest grid cell and gets values from that cell
+# The input include:
+# site_lat: the latitude of the site
+# site_lon: the longitude of the site
+# grid_value: the values to be matched to, as a matrix
+# grid_lat and grid_lon: the corresponding coordinators for the matrix
+get_nearest_value <- function(site_lat,site_lon,grid_value,grid_lat,grid_lon){
+  # Find the index for the nearest lat
+  lat_idx <- which.min(abs(site_lat - grid_lat))
+  # Find the index for the nearest lon
+  lon_idx <- which.min(abs(site_lon - grid_lon))
+  # Get the value from that cell
+  value <- grid_value[lat_idx,lon_idx]
+  return(value)
+}
+
+# This function is to extract lon,lat,and values from nc files
+# Input include:
+# nc_path: the folder path of the nc file
+# varname: the key word in the nc file name
+extract_nc <- function(nc_path,varname){
+  # Get the file path of the target nc file
+  nc_file_path <- list.files(nc_path,full.names = TRUE)[grepl(varname,list.files(nc_path))]
+  nc <- nc_open(nc_file_path)
+  # Get coordinates
+  lon <- ncvar_get(nc,"lon")
+  lat <- ncvar_get(nc,"lat")
+  # Get target variable from the top layer
+  var_value <- ncvar_get(nc,varname)[1,,]
+  return(list(lon=lon,lat=lat,layer=var_value))
+}
