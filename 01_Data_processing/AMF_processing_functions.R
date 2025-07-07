@@ -157,3 +157,25 @@ extract_nc <- function(nc_path,varname){
   var_value <- ncvar_get(nc,varname)[1,,]
   return(list(lon=lon,lat=lat,layer=var_value))
 }
+
+# This function calculates soil water potential psi_soil based on soil texture and soil moisture
+# Using Clapp and Hornberger equation: psi_soil = psi_ae*(SM/porosity)^(-b)
+# Reference: Lauren et al. 2023
+# Input include:
+# df: the target hourly df of AMF data
+# siteinfo: siteinfo including the soil properties
+# Site_ID: ID of this site (note: this should be revised later for full AMF dataset)
+Cal_psisoil <- function(df,siteinfo,Site_ID){
+  # air-entry water potential Unit: Jkg-1
+  psi_ae <- siteinfo$psi.ae[siteinfo$site_id == Site_ID]
+  # porosity
+  porosity <- siteinfo$porosity[siteinfo$site_id == Site_ID]
+  # pore-size distribution lamda
+  lamda <- siteinfo$lamda[siteinfo$site_id == Site_ID]
+  # b = 1/lamda
+  b <- 1/lamda
+  # SM from AMF data Unit: m3/m3
+  SM <- df$SWC/100
+  psi_soil <- psi_ae*((SM/porosity)^(-b))
+  return(psi_soil)
+}

@@ -226,6 +226,7 @@ cal_transfer_entropy <- function(var1,var2,nbins,lower_qt,upper_qt,lag,cr = FALS
   # Put them into a matrix
   M <- cbind(x_lag,yt,yt_1)
   # Remove rows if there is any NA, to ensure complete observations
+  # NEED TO FIX THIS
   M <- M[complete.cases(M),]
 
   if(cr){
