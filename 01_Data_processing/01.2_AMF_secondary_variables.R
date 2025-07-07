@@ -16,6 +16,9 @@ AMF_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Data/02_AMF_cleaned/
 # Input path to Soil properties
 # Note: soil texture classification and code can be found in https://ftp.ems.psu.edu/pub/data/1995-0795/textclass.ascii
 Soil_path <- here("00_Data")
+# Soil hydraulic traits lookup table
+Soil_lookup <- read.csv(here("00_Data","Soil_texture_lookup.csv"))
+
 # Source functions for AMF processing
 source(here("01_Data_processing","AMF_processing_functions.R")) 
   

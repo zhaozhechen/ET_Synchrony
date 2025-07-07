@@ -1,0 +1,18 @@
+﻿Class code,Description,porosity,psi-ae,lamda,Sf
+0,No data,,,,
+1,Sand,0.395,12.1,0.694,4.95
+2,Loamy sand,0.41,9,0.553,6.13
+3,Sandy loam,0.435,21.8,0.378,11.01
+4,Silt loam,0.485,78.6,0.234,16.68
+5,Silt,0.485,78.6,0.234,16.68
+6,Loam,0.451,47.8,0.252,8.89
+7,Sandy clay loam,0.42,29.9,0.319,21.85
+8,Silty clay loam,0.477,35.6,0.177,27.3
+9,Clay loam,0.476,63,0.242,20.88
+10,Sandy clay,0.426,15.3,0.223,23.9
+11,Silty clay,0.492,49,0.15,29.22
+12,Clay,0.482,40.5,0.165,31.63
+13,Organic materials,,,,
+14,Water,,,,
+15,Bedrock,,,,
+16,Other,,,,
