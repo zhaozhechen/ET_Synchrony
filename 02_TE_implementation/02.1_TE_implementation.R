@@ -65,7 +65,9 @@ TE_df <- Cal_TE_main(var1 = df$delta_log10_psi_soil_anomaly,
                      alpha = alpha,
                      nshuffle = nshuffle,
                      upper_qt = upper_qt,
-                     lower_qt = lower_qt)
+                     lower_qt = lower_qt,
+                     ZFlag_Source = FALSE,
+                     ZFlag_Sink = FALSE)
 end_time <- Sys.time()
 run_time <- as.character(end_time - start_time)
 writeLines(run_time,con=paste0(Output_path,"/TE_log.txt"))
