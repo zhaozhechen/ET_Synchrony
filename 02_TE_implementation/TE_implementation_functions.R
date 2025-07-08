@@ -106,6 +106,7 @@ get_binning_edges <- function(var,nbins,lower_qt = NULL, upper_qt = NULL){
   upper_bd <- max(nonzero) + ths
   # Get breaks (note, for nbins, the edge should be nbins+1)
   breaks <- seq(lower_bd,upper_bd,length.out = nbins + 1)
+  #breaks <- hist(nonzero,breaks=nbins)$breaks
   return(breaks)
 }
 
@@ -130,7 +131,7 @@ zero_adjustment <- function(var,nbins,lower_qt = NULL, upper_qt = NULL,ZFlag){
   
   # Get bin edges and bin the non-zero values
   breaks <- get_binning_edges(var_nonzero,nbins=non_zero_bins,lower_qt,upper_qt)
-  bins <- cut(var_nonzero,breaks=breaks,include.lowest = TRUE,labels = FALSE,right = FALSE)
+  bins <- cut(var_nonzero,breaks=breaks,include.lowest = TRUE,labels = FALSE,right = TRUE)
   
   # Shift bins if zero exists, and put zero in the first bin
   if(ZFlag){
