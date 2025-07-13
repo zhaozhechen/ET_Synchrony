@@ -94,6 +94,37 @@ ZeroAdjustment <- function(var,nbins,ths = 1e-6,lower_bd,upper_bd){
   return(bin_idx)
 }
 
-
+# This function calculates 1-D Shannon entropy
+# Input include:
+# TS data to be processed (var)
+# number of total bins for descretization: nbins
+# lower and upper bd for the outliers
+# whether zero-adjustment is needed: ZFlag (TRUE or FALSE)
+cal_entropy <- function(var,nbins,lower_bd,upper_bd,ZFlag){
+  # Only keep non-NA
+  var <- var[is.finite(var)]
+  # If zero-adjustment needed
+  if(ZFlag){
+    # Get # of zeros
+    num_zero <- sum(var == 0,na.rm=TRUE)
+    # Keep non-zero values
+    nonzero_values <- var[var != 0]
+    # Get counts in each bin for non-zero values
+    h <- histogram(nonzero_values,nbins = nbins - 1,lower_bd,upper_bd)
+    N <- h$counts
+    # Add zero counts in the first bin
+    N <- c(num_zero,N)
+  }else{
+    # If zero-adjustment is not needed
+    h <- histogram(var,nbins=nbins,lower_d,upper_bd)
+    N <- h$counts
+  }
+  # Convert N to probability
+  probs <- N/sum(N)
+  probs <- probs[probs > 0]
+  # Calculate Shannon entropy
+  H <- -sum(probs * log2(probs))
+  return(H)
+}
 
 
