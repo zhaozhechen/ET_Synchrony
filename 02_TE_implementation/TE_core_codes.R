@@ -39,7 +39,7 @@ histogram <- function(var,nbins,lower_bd,upper_bd){
 # The edges of the bins: binEdges
 # The lower boundary for folding the first bin: lower_bd
 # The upper boundary for folding the last bin: upper_bd
-# Output: returns the bins each point belong to
+# Output: returns the bins each point belongs to
 digitize <- function(var,binEdges,lower_bd,upper_bd){
   # Get the number of bins, this is necessary when adjusting for zero
   nbins <- length(binEdges) - 1
@@ -62,6 +62,38 @@ find_bounds <- function(var,lower_qt,upper_qt){
   upper_bd <- quantile(var,probs = upper_qt,na.rm = TRUE)
   return(list(lower_bd,upper_bd))
 }
+
+# This function adjusts zero values in the data when discretizing continuous data, true zero values are put in the first bin
+# While the non-zero values are put into the rest n-1 bins, and shift 1 bin to the right
+# Input are:
+# TS data to be processed (var)
+# number of total bins for descretization: nbins
+# a tiny value for edge extension: ths (default 1e-6)
+# lower and upper bd for the outliers
+# Output is: returns the bins each point belongs to, after adjusting for zero values
+ZeroAdjustment <- function(var,nbins,ths = 1e-6,lower_bd,upper_bd){
+  # Initialize a vector to store output bin index
+  bin_idx <- rep(NA,length(var))
+  # Get index for zero and non-zero values
+  zero_idx <- which(var == 0)
+  nonzero_idx <- which(var !=0 & !is.na(var))
+  # Get non-zero values
+  nonzero_values <- var[nonzero_idx]
+  # Get histogram info for nonzero values, accounting for outliers
+  h <- histogram(nonzero_values,nbins = nbins - 1,lower_bd,upper_bd)
+  bin_edges <- h$breaks
+  # Expand both edges a little
+  bin_edges[1] <- bin_edges[1] - ths
+  bin_edges[length(bin_edges)] <- bin_edges[length(bin_edges)] + ths
+  # Discretize nonzero values into bins
+  bin_id_nonzero <- digitize(nonzero_values,bin_edges,lower_bd,upper_bd)
+  # Shift all these nonzero values 1 bin to the right
+  bin_idx[nonzero_idx] <- bin_id_nonzero + 1
+  # All 0 are put in the first bin
+  bin_idx[zero_idx] <- 1
+  return(bin_idx)
+}
+
 
 
 
