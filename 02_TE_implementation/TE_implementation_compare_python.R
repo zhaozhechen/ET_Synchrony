@@ -9,6 +9,7 @@
 # Only Transfer Entropy: TE(SM->ET) was calculated, mutual information or correlation were not included in this test code
 
 # ------- Global --------
+library(here)
 # Source functions for TE implementation and visualization
 source(here("02_TE_implementation","TE_implementation_functions.R"))
 source(here("05_Visualization","Plotting_functions.R"))
