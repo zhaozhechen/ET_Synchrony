@@ -51,5 +51,17 @@ digitize <- function(var,binEdges,lower_bd,upper_bd){
   return(bin_id)
 }
 
+# This function calculates the upper and lower boundary based on quantile
+# Input include:
+# The time series need to be discritized: var
+# The lower boundary for folding the first bin: lower_qt as in quantile
+# The upper boundary for folding the last bin: upper_qt as in quantile
+# Output: returns the upper and lower boundary as in their original scale
+find_bounds <- function(var,lower_qt,upper_qt){
+  lower_bd <- quantile(var,probs = lower_qt,na.rm = TRUE)
+  upper_bd <- quantile(var,probs = upper_qt,na.rm = TRUE)
+  return(list(lower_bd,upper_bd))
+}
+
 
 
