@@ -10,9 +10,11 @@ upper_bd <- 0.42
 # Assuming the upper and lower boundaries are always provided for simplification
 # Input include:
 # The time series need to be discritized: var
-# The lower boundary for folding the first bin: lower_qt (as a quantile)
-# The upper boundary for folding the last bin: upper_qt (as a quantile)
-# Output: TS after dealing with the outliers
+# The total number of bins: nbins
+# The lower boundary for folding the first bin: lower_bd
+# The upper boundary for folding the last bin: upper_bd
+# Output1: the number of points in each bin after accounting for the outliers: counts
+# Output2: the edges for the bins: breaks
 histogram <- function(var,nbins,lower_bd,upper_bd){
   # Get # of outliers on the two sides
   lower_count <- sum(var <= lower_bd,na.rm=TRUE)
@@ -29,5 +31,25 @@ histogram <- function(var,nbins,lower_bd,upper_bd){
   return(list(counts = h$counts,
               breaks = breaks))
 }
+
+# This function is to discretize continuous data into bins based on bin edges
+# The outliers are put into the first/last bins
+# Input include:
+# The time series need to be discritized: var
+# The edges of the bins: binEdges
+# The lower boundary for folding the first bin: lower_bd
+# The upper boundary for folding the last bin: upper_bd
+# Output: returns the bins each point belong to
+digitize <- function(var,binEdges,lower_bd,upper_bd){
+  # Get the number of bins, this is necessary when adjusting for zero
+  nbins <- length(binEdges) - 1
+  # Discretize the data, left-closed
+  bin_id <- cut(var,breaks = binEdges,include.lowest = TRUE,right = FALSE,labels = FALSE)
+  # Assign outliers to the first and last bins
+  bin_id[var <= lower_bd] <- 1
+  bin_id[var >= upper_bd] <- nbins
+  return(bin_id)
+}
+
 
 
