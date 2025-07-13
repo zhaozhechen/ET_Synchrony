@@ -127,4 +127,48 @@ cal_entropy <- function(var,nbins,lower_bd,upper_bd,ZFlag){
   return(H)
 }
 
+# This function calculates joint bin counts for 3D matrix
+# Input includes:
+# a 3-D matrix: M (Xlagged,Yt,Yt-1)
+# number of total bins for descretization: nbins
+# lower and upper bd for the outliers (here they are vectors for the three columns)
+# ZFlag: A logical vector of length 3, indicating which column needs zero-adjustment
+# Output1: A vector of joint bin counts: N (length nbins^3)
+# Output2: corr: correlation between the first two columns (Xlagged and Yt)
+joint_entropy3D <- function(M,nbins,lower_bd,upper_bd,ZFlag){
+  # Only keep rows that have no NA
+  M <- M[complete.cases(M),]
+  # Note: use 10e-4 here to be consistent with the python version
+  ths <- 10e-4
+  # Discretize each column with or without zero-adjustment
+  bin_list <- vector("list",3)
+  # Loop over each of the columns
+  for(i in 1:3){
+    # If zero-adjustment is needed
+    if(ZFlag[i]){
+      # Get bin index
+      bin_list[[i]] <- ZeroAdjustment(M[,i],nbins,ths = ths,lower_bd[i],upper_bd[i])
+    }else{
+      # If no zero-adjustment is needed
+      h <- histogram(M[,i],nbins,lower_bd[i],upper_bd[i])
+      binEdges <- h$breaks
+      # Expand the two edges
+      binEdges[1] <- binEdges[1] - ths
+      binEdges[length(binEdges)] <- binEdges[length(binEdges)] + ths
+      # Get bin index
+      bin_list[[i]] <- digitize(M[,i],binEdges,lower_bd[i],upper_bd[i])
+    }
+  }
+  # Convert 3D bin_idx to 1D bin_idx
+  joint_bin <- (bin_list[[1]]-1)*nbins^2 + (bin_list[[2]]-1)*nbins + bin_list[[3]]
+  # Count each value
+  N <- tabulate(joint_bin,nbins^3)
+  # Also calculates correlation between the first and second column (Xlagged and Yt)
+  corr <- cor(M[,1],M[,2])
+  return(list(N=N,corr = corr))
+}
+
+
+
+
 
