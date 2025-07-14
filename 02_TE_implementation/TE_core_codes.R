@@ -94,39 +94,6 @@ ZeroAdjustment <- function(var,nbins,ths = 1e-6,lower_bd,upper_bd){
   return(bin_idx)
 }
 
-# This function calculates 1-D Shannon entropy
-# Input include:
-# TS data to be processed (var)
-# number of total bins for descretization: nbins
-# lower and upper bd for the outliers
-# whether zero-adjustment is needed: ZFlag (TRUE or FALSE)
-cal_entropy <- function(var,nbins,lower_bd,upper_bd,ZFlag){
-  # Only keep non-NA
-  var <- var[is.finite(var)]
-  # If zero-adjustment needed
-  if(ZFlag){
-    # Get # of zeros
-    num_zero <- sum(var == 0,na.rm=TRUE)
-    # Keep non-zero values
-    nonzero_values <- var[var != 0]
-    # Get counts in each bin for non-zero values
-    h <- histogram(nonzero_values,nbins = nbins - 1,lower_bd,upper_bd)
-    N <- h$counts
-    # Add zero counts in the first bin
-    N <- c(num_zero,N)
-  }else{
-    # If zero-adjustment is not needed
-    h <- histogram(var,nbins=nbins,lower_d,upper_bd)
-    N <- h$counts
-  }
-  # Convert N to probability
-  probs <- N/sum(N)
-  probs <- probs[probs > 0]
-  # Calculate Shannon entropy
-  H <- -sum(probs * log2(probs))
-  return(H)
-}
-
 # This function calculates joint bin counts for 3D matrix
 # Input includes:
 # a 3-D matrix: M (Xlagged,Yt,Yt-1)
@@ -161,14 +128,60 @@ joint_entropy3D <- function(M,nbins,lower_bd,upper_bd,ZFlag){
   }
   # Convert 3D bin_idx to 1D bin_idx
   joint_bin <- (bin_list[[1]]-1)*nbins^2 + (bin_list[[2]]-1)*nbins + bin_list[[3]]
-  # Count each value
+  # Count number of obs in each bin (joint counts)
   N <- tabulate(joint_bin,nbins^3)
   # Also calculates correlation between the first and second column (Xlagged and Yt)
   corr <- cor(M[,1],M[,2])
   return(list(N=N,corr = corr))
 }
 
+# This function calculates Shannon entropy from counts
+# This count could be from any dimensions, but needs to be a vector
+# Input: count
+# Output: Shannon entropy (Unit:bits)
+cal_entropy <- function(counts){
+  # Only keep positive counts
+  counts <- counts[counts>0]
+  # Convert to probs
+  probs <- counts/sum(counts)
+  # Calculate Shannon entropy
+  H <- -sum(probs * log2(probs))
+  return(H)
+}
 
+#
+cal_info_metrics_3D <- function(N,nbins){
+  # If N is not full length, add 0 to the end
+  if(length(N) < nbins^3){
+    N <- c(N,rep(0,nbins^3 - length(N)))
+  }
+  # Convert N to 3D array: Xlagged, Yt, and Yt-1
+  N3 <- array(N,dim = c(nbins,nbins,nbins))
+  
+  # 1D marginal counts
+  Mxt <- apply(N3, 1, sum)  # sum over dims 2 and 3
+  Myt <- apply(N3, 2, sum)  # sum over dims 1 and 3
+  Myt_1 <- apply(N3, 3, sum)  # sum over dims 1 and 2
+  
+  # 2D marginal counts
+  Mxtyt <- apply(N3, c(1,2), sum)  # sum over dim 3
+  Mytyt_1 <- apply(N3, c(2,3), sum)  # sum over dim 1
+  Myt_1xt <- apply(N3, c(1,3), sum)  # sum over dim 2
+  
+  # Calculate entropies
+  Hxt <- cal_entropy(Mxt)
+  Hyt <- cal_entropy(Myt)
+  Hyt_1 <- cal_entropy(Myt_1)
+  Hxtyt <- cal_entropy(Mxtyt)
+  Hytyt_1 <- cal_entropy(Mytyt_1)
+  Hyt_1xt <- cal_entropy(Myt_1xt)
+  Hxtytyt_1 <- cal_entropy(N)
+  
+  # Calculate MI and TE
+  MI <- Hxt + Hyt - Hxtyt
+  TE <- Hytyt_1 + Hyt_1xt - Hyt_1 - Hxtytyt_1
+  return(list(Hxt = Hxt,Hyt = Hyt, MI = MI, TE = TE))
+}
 
 
 
