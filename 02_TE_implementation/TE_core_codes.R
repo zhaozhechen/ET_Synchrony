@@ -6,6 +6,9 @@ nbins <- 11
 lower_bd <- 0.25
 upper_bd <- 0.42
 
+library(future)
+library(future.apply)
+
 # This function is to deal with outliers before discretization of continuous data
 # Assuming the upper and lower boundaries are always provided for simplification
 # Input include:
@@ -243,9 +246,78 @@ joint_3D_shuffle <- function(M,nbins,lower_bd,upper_bd,ZFlag){
   return(results)
 }
 
-# This function is to calculate critical 
+# This function conducts joint_3D_shuffle for nshuffle times
+# Input includes:
+# a 3-D matrix: M (Xlagged,Yt,Yt-1)
+# number of total bins for descretization: nbins
+# lower and upper bd for the outliers (here they are vectors for the three columns)
+# ZFlag: A logical vector of length 3, indicating which column needs zero-adjustment
+# nshuffle: number of shuffles to be conducted (bootstrapping #)
+# Output1: A list of a vector of joint bin counts: N (length nbins^3)
+# Output2: A list of corr: correlation between the first two columns (Xlagged and Yt)
+joint3D_critical <- function(M,nbins,lower_bd,upper_bd,ZFlag,nshuffle){
+  future_lapply(1:nshuffle,function(i){
+    joint_3D_shuffle(M,nbins,lower_bd,upper_bd,ZFlag)
+  },future.seed=TRUE)
+}
 
 
 
+# This function is to calculate critical values for MI,TE,and Corr
+# Input includes:
+# a 3-D matrix: M (Xlagged,Yt,Yt-1)
+# number of total bins for descretization: nbins
+# lower and upper bd for the outliers (here they are vectors for the three columns)
+# ZFlag: A logical vector of length 3, indicating which column needs zero-adjustment
+# nshuffle: number of shuffles to be conducted (bootstrapping #)
+# alpha: alpha value for statistical inference
+# Output: critical values of MI, TE, and Correlation (between Xlag and Yt)
+cal_critical_TE_MI_Corr <- function(M,nbins,lower_bd,upper_bd,ZFlag,nshuffle,alpha){
+  # Parallel TE calculation from shuffled data
+  shuffled_results <- joint3D_critical(M,nbins,lower_bd,upper_bd,ZFlag,nshuffle)
+  # Calculate info metrics for each shuffle
+  info_metric_ls <- future_lapply(shuffled_results,function(results){
+    metrics <- cal_info_metrics_3D(results$N,nbins)
+    list(Hxt = metrics$Hxt,
+         Hyt = metrics$Hyt,
+         MI = metrics$MI,
+         TE = metrics$TE,
+         Corr = results$corr)
+  },future.seed = TRUE)
+  
+  # Get values from the list
+  extract_metric <- function(field) sapply(info_metric_ls,function(x) x[[field]])
+  Hxt_all <- extract_metric("Hxt")
+  Hyt_all <- extract_metric("Hyt")
+  MI_all <- extract_metric("MI")
+  TE_all <- extract_metric("TE")
+  Corr_all <- extract_metric("Corr")
+  
+  # Get critical values based on T-statistics
+  # Note: use df of 100 to be consistent with the python version
+  t_stat <- qt(1-alpha,df = 100)
+  MIcrit <- mean(MI_all) + t_stat*sd(MI_all)
+  TEcrit <- mean(TE_all) + t_stat*sd(TE_all)
+  Corrcrit <- mean(Corr_all) + t_stat*sd(Corr_all)
+  return(list(MIcrit = MIcrit,TEcrit = TEcrit, Corrcrit = Corrcrit))
+}
 
+
+# This is the main function for TE and MI calculation
+Cal_TE_MI_main <- function(Source,Sink,nbins,nshuffle,alpha,Maxlag,ZFlagSink,ZFlagSource,Lag_Dependent_Crit){
+  
+  
+  
+}
+
+
+cal_critical_TE_MI_Corr(M,11,lower_bd,upper_bd,ZFlag,3,0.05)
+
+lower_bd=c(0.24,0.24,0.24)
+upper_bd = c(0.43,0.43,0.43)
+ZFlag = c(TRUE,TRUE,TRUE)
+nshuffle <- 3
+
+joint3D_critical(M = cbind(AMF_df$SM,AMF_df$ET,AMF_df$ET),nbins=11,lower_bd=c(0.24,0.24,0.24),
+                 upper_bd = c(0.43,0.43,0.43),ZFlag = c(TRUE,TRUE,TRUE),nshuffle =3)
 
