@@ -35,7 +35,6 @@ set.seed(50)
 ZFlagSink = FALSE
 ZFlagSource = FALSE
 
-
 # These are folding parameters to deal with extreme values (outliers) in the time series
 # i.e., extreme values will be binned into the first or last bin
 lower_qt <- 0.001
@@ -57,26 +56,13 @@ results_df <- Cal_TE_MI_main(Source = AMF_df$SM,
 end_time <- Sys.time()
 print(end_time - start_time)
 
-
-SM_TE_df <- Cal_TE_main(var1 = AMF_df$SM,
-                        var2 = AMF_df$ET,
-                        max_lag = max_lag,
-                        nbins = nbin,
-                        alpha = alpha,
-                        nshuffle = nshuffle,
-                        upper_qt = upper_qt,
-                        lower_qt = lower_qt,
-                        ZFlag_Source = FALSE,
-                        ZFlag_Sink = FALSE)
-
-
 # Record: running time (3.4 mins)
-g_TE <- TE_lag_plot(SM_TE_df,"SM->ET","None")
+g_TE <- TE_lag_plot(results_df,"SM->ET","None")
 # Output this figure
 #print_g(g_TE,"TE_SM_ET_daily_US-Ne1_test",6,4)
 
 # Compare R results with python results
-TE_df <- data.frame(TE_R = SM_TE_df$TE[1:90],
+TE_df <- data.frame(TE_R = results_df$TE[1:90],
                     TE_Py = SM_TE_df_py$TE_bits)
 # Calculate R2 between TE_R and TE_Py
 R2 <- round(summary(lm(data=TE_df,TE_Py~TE_R))$r.squared,2)

@@ -203,9 +203,9 @@ cal_info_metrics_3D <- function(N,nbins){
 Lag_Data <- function(X,Y,lag){
   n <- length(X)
   # Shift the TS
-  x_lag <- X[1:(n-lag)]
-  yt <- Y[(lag+1):n]
-  yt_1 <- Y[lag:(n-1)]
+  x_lag <- X[2:(n-lag)]
+  yt <- Y[(lag+2):n]
+  yt_1 <- Y[(lag+1):(n-1)]
   # Combine them
   M <- cbind(x_lag,yt,yt_1)
   return(M)
@@ -301,8 +301,16 @@ cal_critical_TE_MI_Corr <- function(M,nbins,lower_bd,upper_bd,ZFlag,nshuffle,alp
   return(list(MIcrit = MIcrit,TEcrit = TEcrit, Corrcrit = Corrcrit))
 }
 
-
 # This is the main function for TE and MI calculation
+# Input includes:
+# Source: the TS of source variable
+# Sink: the TS of sink variable
+# nbins: number of total bins for descretization:
+# nshuffle: number of shuffle for critical value calculation
+# alpha: value for statistical inference
+# Maxlag: allowed maximum lag
+# ZFlagSink/ZFlagSource: whether the sink/source variables need zero-adjustment (TRUE or FALSE)
+# Lag_Dependet_Crit: whether need lag-dependent critical values (TRUE or FALSE)
 Cal_TE_MI_main <- function(Source,Sink,nbins,nshuffle,alpha,Maxlag,ZFlagSink,ZFlagSource,Lag_Dependent_Crit){
   # Get bounds of source and sink variables (only for nonzero values)
   Source_bd <- find_bounds(Source[Source!=0],lower_qt,upper_qt)
@@ -313,54 +321,49 @@ Cal_TE_MI_main <- function(Source,Sink,nbins,nshuffle,alpha,Maxlag,ZFlagSink,ZFl
   # Set ZFlag for joint entropy input
   ZFlag <- c(ZFlagSource,ZFlagSink,ZFlagSink)
   
-  # Initialize vectors for output, all have the length of Maxlag
-  MI <- MIcrit <- TE <- TEcrit <- Corr <- Corrcrit <- Hx <- Hy <- numeric(Maxlag + 1)
-  # If lag-dependent critical value is not needed
+  # Compute critical values once, if lag-dependent critical value is not needed
   if(!Lag_Dependent_Crit){
     # Make the lagged matrix
     M0 <- Lag_Data(Source,Sink,Maxlag)
     # Get critical values
-    metric_crit <- cal_critical_TE_MI_Corr(M0,nbins,lower_bd,upper_bd,ZFlag,nshuffle,alpha)
-    MIcrit[] <- metric_crit$MIcrit
-    TEcrit[] <- metric_crit$TEcrit
-    Corrcrit[] <- metric_crit$Corrcrit
+    global_crit <- cal_critical_TE_MI_Corr(M0,nbins,lower_bd,upper_bd,ZFlag,nshuffle,alpha)
   }
   
   # Loop over lags to calculate information metrics
   # Initialize a list to store all results
-  results_ls <- progressr::with_progress({
+  results_df <- progressr::with_progress({
     # Initiate a progressor
     p <- progressor(along = 0:max_lag)
     # calculate entropy across all lags
-    future_lapply(0:Maxlag,function(lag){
+    results <- future_lapply(0:Maxlag,function(lag){
       # Make the lagged matrix
       M <- Lag_Data(Source,Sink,lag)
       # Get joint counts and corr
       lag_result <- joint_entropy3D(M,nbins,lower_bd,upper_bd,ZFlag)
       # Calculate information metrics
       lag_metrics <- cal_info_metrics_3D(lag_result$N,nbins)
-      # Put them in to the output vectors
-      MI[lag+1] <- lag_metrics$MI
-      TE[lag+1] <- lag_metrics$TE
-      Hx[lag+1] <- lag_metrics$Hxt
-      Hy[lag+1] <- lag_metrics$Hyt
       
-      # Calculate lag-dependent critical values
+      # Calculate lag-dependent critical values if needed
       if(Lag_Dependent_Crit){
         # Get critical values
         metric_crit <- cal_critical_TE_MI_Corr(M,nbins,lower_bd,upper_bd,ZFlag,nshuffle,alpha)
-        MIcrit[lag+1] <- metric_crit$MIcrit
-        TEcrit[lag+1] <- metric_crit$TEcrit
-        Corrcrit[lag+1] <- metric_crit$Corrcrit
+      }else{
+        metric_crit <- global_crit
       }
+      
       p()
-      list(Lag = lag,MI = MI,MIcrit = MIcrit,
-           TE = TE,TEcrit = TEcrit,Corr = Corr, Corrcrit = Corrcrit,
-           Hx = Hx,Hy = Hy)
+      data.frame(Lag = lag,
+                 MI = lag_metrics$MI,
+                 MIcrit = metric_crit$MIcrit,
+                 TE = lag_metrics$TE,
+                 TEcrit = metric_crit$TEcrit,
+                 Corr = lag_result$corr, 
+                 Corrcrit = metric_crit$Corrcrit,
+                 Hx = lag_metrics$Hx,
+                 Hy = lag_metrics$Hy)
     },future.seed = TRUE)
+    do.call(rbind,results)
   })
-  # Combine all output into a data frame
-  results_df <- do.call(rbind.data.frame,results_ls)
   return(results_df)
 }
 
