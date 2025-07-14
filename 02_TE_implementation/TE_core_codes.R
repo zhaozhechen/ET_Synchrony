@@ -192,7 +192,10 @@ cal_info_metrics_3D <- function(N,nbins){
 
 # This function is to shift TS input and generate a shifted matrix
 # Input include:
-# 
+# The original TS of the source: X
+# The original TS of the sink: Y
+# Lag for X: lag
+# The output is a matrix of:[Xlag,Yt,Yt-1]
 Lag_Data <- function(X,Y,lag){
   n <- length(X)
   # Shift the TS
@@ -203,6 +206,46 @@ Lag_Data <- function(X,Y,lag){
   M <- cbind(x_lag,yt,yt_1)
   return(M)
 }
+
+# This function is to shuffle matrix, for calculation of critical TE values
+# It shuffles each column in the matrix, while preserving the locations of NA
+# Input is the matrix to shuffle: M
+# Output: the shuffled matrix
+shuffle_matrix <- function(M){
+  # Initialize a blank matrix
+  M0 <- matrix(NA,nrow=nrow(M),ncol=ncol(M))
+  # Loop over the columns
+  for(i in 1:ncol(M)){
+    col_values <- M[,i]
+    non_na_idx <- which(!is.na(col_values))
+    # Only shuffle non-NA values
+    shuffled_values <- sample(col_values[non_na_idx])
+    # Put them pack
+    M0[non_na_idx,i] <- shuffled_values
+  }
+  return(M0)
+}
+
+# This function shuffles each column of the input matrix
+# Then apply joint_entropy_3D to the shuffled matrix
+# Input includes:
+# a 3-D matrix: M (Xlagged,Yt,Yt-1)
+# number of total bins for descretization: nbins
+# lower and upper bd for the outliers (here they are vectors for the three columns)
+# ZFlag: A logical vector of length 3, indicating which column needs zero-adjustment
+# Output1: A vector of joint bin counts: N (length nbins^3)
+# Output2: corr: correlation between the first two columns (Xlagged and Yt)
+joint_3D_shuffle <- function(M,nbins,lower_bd,upper_bd,ZFlag){
+  # Shuffle the matrix
+  Ms <- shuffle_matrix(M)
+  # Get joint counts
+  results <- joint_entropy3D(Ms,nbins,lower_bd,upper_bd,ZFlag)
+  return(results)
+}
+
+# This function is to calculate critical 
+
+
 
 
 
