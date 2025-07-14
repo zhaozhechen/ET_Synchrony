@@ -32,6 +32,9 @@ alpha <- 0.05 # Confidence level for critical TE
 plan(multisession,workers = availableCores()-1)
 # Ensure reproducibility
 set.seed(50)
+ZFlagSink = FALSE
+ZFlagSource = FALSE
+
 
 # These are folding parameters to deal with extreme values (outliers) in the time series
 # i.e., extreme values will be binned into the first or last bin
@@ -42,6 +45,19 @@ upper_qt <- 0.999
 # Timing the TE calculation
 start_time <- Sys.time()
 # Run TE from SM to ET
+results_df <- Cal_TE_MI_main(Source = AMF_df$SM,
+                             Sink = AMF_df$ET,
+                             nbins = nbin,
+                             nshuffle = nshuffle,
+                             alpha = alpha,
+                             Maxlag = max_lag,
+                             ZFlagSink = ZFlagSink,
+                             ZFlagSource = ZFlagSource,
+                             Lag_Dependent_Crit = Lag_Dependent_Crit)
+end_time <- Sys.time()
+print(end_time - start_time)
+
+
 SM_TE_df <- Cal_TE_main(var1 = AMF_df$SM,
                         var2 = AMF_df$ET,
                         max_lag = max_lag,
@@ -53,8 +69,7 @@ SM_TE_df <- Cal_TE_main(var1 = AMF_df$SM,
                         ZFlag_Source = FALSE,
                         ZFlag_Sink = FALSE)
 
-end_time <- Sys.time()
-print(end_time - start_time)
+
 # Record: running time (3.4 mins)
 g_TE <- TE_lag_plot(SM_TE_df,"SM->ET","None")
 # Output this figure

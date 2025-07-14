@@ -8,6 +8,7 @@ upper_bd <- 0.42
 
 library(future)
 library(future.apply)
+library(progressr)
 
 # This function is to deal with outliers before discretization of continuous data
 # Assuming the upper and lower boundaries are always provided for simplification
@@ -261,8 +262,6 @@ joint3D_critical <- function(M,nbins,lower_bd,upper_bd,ZFlag,nshuffle){
   },future.seed=TRUE)
 }
 
-
-
 # This function is to calculate critical values for MI,TE,and Corr
 # Input includes:
 # a 3-D matrix: M (Xlagged,Yt,Yt-1)
@@ -305,19 +304,64 @@ cal_critical_TE_MI_Corr <- function(M,nbins,lower_bd,upper_bd,ZFlag,nshuffle,alp
 
 # This is the main function for TE and MI calculation
 Cal_TE_MI_main <- function(Source,Sink,nbins,nshuffle,alpha,Maxlag,ZFlagSink,ZFlagSource,Lag_Dependent_Crit){
+  # Get bounds of source and sink variables (only for nonzero values)
+  Source_bd <- find_bounds(Source[Source!=0],lower_qt,upper_qt)
+  Sink_bd <- find_bounds(Sink[Sink!=0],lower_qt,upper_qt)
+  # Set bounds for joint entropy input, follow the order of Xlag,Yt,Yt-1
+  lower_bd <- c(Source_bd[[1]],Sink_bd[[1]],Sink_bd[[1]])
+  upper_bd <- c(Source_bd[[2]],Sink_bd[[2]],Sink_bd[[2]])
+  # Set ZFlag for joint entropy input
+  ZFlag <- c(ZFlagSource,ZFlagSink,ZFlagSink)
   
+  # Initialize vectors for output, all have the length of Maxlag
+  MI <- MIcrit <- TE <- TEcrit <- Corr <- Corrcrit <- Hx <- Hy <- numeric(Maxlag + 1)
+  # If lag-dependent critical value is not needed
+  if(!Lag_Dependent_Crit){
+    # Make the lagged matrix
+    M0 <- Lag_Data(Source,Sink,Maxlag)
+    # Get critical values
+    metric_crit <- cal_critical_TE_MI_Corr(M0,nbins,lower_bd,upper_bd,ZFlag,nshuffle,alpha)
+    MIcrit[] <- metric_crit$MIcrit
+    TEcrit[] <- metric_crit$TEcrit
+    Corrcrit[] <- metric_crit$Corrcrit
+  }
   
-  
+  # Loop over lags to calculate information metrics
+  # Initialize a list to store all results
+  results_ls <- progressr::with_progress({
+    # Initiate a progressor
+    p <- progressor(along = 0:max_lag)
+    # calculate entropy across all lags
+    future_lapply(0:Maxlag,function(lag){
+      # Make the lagged matrix
+      M <- Lag_Data(Source,Sink,lag)
+      # Get joint counts and corr
+      lag_result <- joint_entropy3D(M,nbins,lower_bd,upper_bd,ZFlag)
+      # Calculate information metrics
+      lag_metrics <- cal_info_metrics_3D(lag_result$N,nbins)
+      # Put them in to the output vectors
+      MI[lag+1] <- lag_metrics$MI
+      TE[lag+1] <- lag_metrics$TE
+      Hx[lag+1] <- lag_metrics$Hxt
+      Hy[lag+1] <- lag_metrics$Hyt
+      
+      # Calculate lag-dependent critical values
+      if(Lag_Dependent_Crit){
+        # Get critical values
+        metric_crit <- cal_critical_TE_MI_Corr(M,nbins,lower_bd,upper_bd,ZFlag,nshuffle,alpha)
+        MIcrit[lag+1] <- metric_crit$MIcrit
+        TEcrit[lag+1] <- metric_crit$TEcrit
+        Corrcrit[lag+1] <- metric_crit$Corrcrit
+      }
+      p()
+      list(Lag = lag,MI = MI,MIcrit = MIcrit,
+           TE = TE,TEcrit = TEcrit,Corr = Corr, Corrcrit = Corrcrit,
+           Hx = Hx,Hy = Hy)
+    },future.seed = TRUE)
+  })
+  # Combine all output into a data frame
+  results_df <- do.call(rbind.data.frame,results_ls)
+  return(results_df)
 }
 
-
-cal_critical_TE_MI_Corr(M,11,lower_bd,upper_bd,ZFlag,3,0.05)
-
-lower_bd=c(0.24,0.24,0.24)
-upper_bd = c(0.43,0.43,0.43)
-ZFlag = c(TRUE,TRUE,TRUE)
-nshuffle <- 3
-
-joint3D_critical(M = cbind(AMF_df$SM,AMF_df$ET,AMF_df$ET),nbins=11,lower_bd=c(0.24,0.24,0.24),
-                 upper_bd = c(0.43,0.43,0.43),ZFlag = c(TRUE,TRUE,TRUE),nshuffle =3)
 
