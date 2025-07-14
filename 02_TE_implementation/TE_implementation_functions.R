@@ -211,9 +211,12 @@ joint_entropy <- function(joint_index){
 cal_transfer_entropy <- function(var1,var2,nbins,lower_qt,upper_qt,lag,cr = FALSE,ZFlag_Source,ZFlag_Sink){
   # Total length of the TS
   n <- length(var2)
-  x_lag <- var1[2:(n-lag)]
-  yt <- var2[(lag+2):n]
-  yt_1 <- var2[(lag+1):(n-1)]
+  #x_lag <- var1[2:(n-lag)]
+  #yt <- var2[(lag+2):n]
+  #yt_1 <- var2[(lag+1):(n-1)]
+  x_lag <- var1[1:(n-lag)]
+  yt <- var2[(lag+1):n]
+  yt_1 <- var2[lag:(n-1)]
   
   # Put them into a matrix
   M <- cbind(x_lag,yt,yt_1)

@@ -149,7 +149,14 @@ cal_entropy <- function(counts){
   return(H)
 }
 
-#
+# This function calculates 1D entropy of X and Y, mutual information (MI(X,Y)), and TE(X->Y)
+# Input include:
+# a vector of joint bin counts, which is the result from joint_entropy3D
+# number of total bins for descretization: nbins
+# Output includes:
+# Hx, Hy, MI(X,Y), and TE(X->Y)
+# MI(X,Y) = H(X) + H(Y) - H(X,Y)
+# TE(x->Y) = H(Yt,Yt-1) + H(Yt-1,Xt-lag) - H(Yt-1) - H(Yt,Yt-1,Xt-lag)
 cal_info_metrics_3D <- function(N,nbins){
   # If N is not full length, add 0 to the end
   if(length(N) < nbins^3){
@@ -181,6 +188,20 @@ cal_info_metrics_3D <- function(N,nbins){
   MI <- Hxt + Hyt - Hxtyt
   TE <- Hytyt_1 + Hyt_1xt - Hyt_1 - Hxtytyt_1
   return(list(Hxt = Hxt,Hyt = Hyt, MI = MI, TE = TE))
+}
+
+# This function is to shift TS input and generate a shifted matrix
+# Input include:
+# 
+Lag_Data <- function(X,Y,lag){
+  n <- length(X)
+  # Shift the TS
+  x_lag <- X[1:(n-lag)]
+  yt <- Y[(lag+1):n]
+  yt_1 <- Y[lag:(n-1)]
+  # Combine them
+  M <- cbind(x_lag,yt,yt_1)
+  return(M)
 }
 
 
