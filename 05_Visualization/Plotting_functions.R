@@ -94,7 +94,7 @@ TE_lag_plot <- function(TE_df,title,norm){
   g_TE <- ggplot(data=TE_df,aes(x=Lag,y=TE))+
     geom_line(linewidth = 0.4)+
     #geom_ribbon(aes(ymin = TE-TE_se,ymax=TE+TE_se),alpha=0.3,color=NA)+
-    geom_line(aes(y=cr_TE),linewidth=0.4,linetype = "dashed",color="royalblue2")+
+    geom_line(aes(y=TEcrit),linewidth=0.4,linetype = "dashed",color="royalblue2")+
     my_theme+
     labs(x = "Lag (days)",y=y_title,color="",fill="")+
     ggtitle(title)
