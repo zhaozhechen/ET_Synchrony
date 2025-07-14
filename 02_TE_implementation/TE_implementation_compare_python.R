@@ -6,8 +6,6 @@
 # Using the same parameter sets
 # The python version is in https://github.com/CZ-Sync/code-sandbox/tree/main/DMurray_TEcodepractice
 
-# Only Transfer Entropy: TE(SM->ET) was calculated, mutual information or correlation were not included in this test code
-
 # ------- Global --------
 library(here)
 # Source functions for TE implementation and visualization
@@ -59,14 +57,13 @@ print(end_time - start_time)
 # Record: running time (3.4 mins)
 g_TE <- TE_lag_plot(results_df,"SM->ET","None")
 # Output this figure
-#print_g(g_TE,"TE_SM_ET_daily_US-Ne1_test",6,4)
+print_g(g_TE,"TE_SM_ET_daily_US-Ne1_test",6,4)
 
 # Compare R results with python results
 TE_df <- data.frame(TE_R = results_df$TE[1:90],
                     TE_Py = SM_TE_df_py$TE_bits)
 # Calculate R2 between TE_R and TE_Py
 R2 <- round(summary(lm(data=TE_df,TE_Py~TE_R))$r.squared,2)
-if(FALSE){
 g <- ggplot(TE_df,aes(TE_R,TE_Py))+
   geom_point(size=2,color="grey",alpha=0.8)+
   geom_abline(slope=1,intercept = 0,linetype="dashed")+
@@ -76,4 +73,3 @@ g <- ggplot(TE_df,aes(TE_R,TE_Py))+
            label=paste("R2 =",R2),
            size=6)
 print_g(g,"TE_comparison_R_vs_python",4,4)
-}

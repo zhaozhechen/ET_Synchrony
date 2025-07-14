@@ -2,10 +2,6 @@
 # This code includes core functions for TE implementation
 # The functions are adapted from Edom Moges
 
-nbins <- 11
-lower_bd <- 0.25
-upper_bd <- 0.42
-
 library(future)
 library(future.apply)
 library(progressr)
@@ -25,8 +21,10 @@ histogram <- function(var,nbins,lower_bd,upper_bd){
   upper_count <- sum(var >= upper_bd,na.rm=TRUE)
   # Filtered data
   filtered <- var[var > lower_bd & var < upper_bd]
+  # Note: in python, np.histogram automatically find the min and max of the data, then divide the range into equal-width bins
+  # To get the same behavior, manually get break points for bins
   # Get the breaking points for bins
-  breaks <- seq(from = lower_bd,to = upper_bd,length.out = nbins + 1)
+  breaks <- seq(from = min(filtered),to = max(filtered),length.out = nbins + 1)
   # Discretize the data, left-closed bins
   h <- hist(filtered,breaks = breaks,plot=FALSE,right = FALSE)
   # Add outlier counts to the first and last bins
@@ -170,14 +168,14 @@ cal_info_metrics_3D <- function(N,nbins){
   N3 <- array(N,dim = c(nbins,nbins,nbins))
   
   # 1D marginal counts
-  Mxt <- apply(N3, 1, sum)  # sum over dims 2 and 3
-  Myt <- apply(N3, 2, sum)  # sum over dims 1 and 3
-  Myt_1 <- apply(N3, 3, sum)  # sum over dims 1 and 2
+  Mxt <- apply(N3, 3, sum)
+  Myt <- apply(N3, 2, sum)
+  Myt_1 <- apply(N3, 1, sum) 
   
   # 2D marginal counts
-  Mxtyt <- apply(N3, c(1,2), sum)  # sum over dim 3
-  Mytyt_1 <- apply(N3, c(2,3), sum)  # sum over dim 1
-  Myt_1xt <- apply(N3, c(1,3), sum)  # sum over dim 2
+  Mxtyt <- apply(N3, c(2,3), sum)
+  Mytyt_1 <- apply(N3, c(1,2), sum) 
+  Myt_1xt <- apply(N3, c(1,3), sum)
   
   # Calculate entropies
   Hxt <- cal_entropy(Mxt)
