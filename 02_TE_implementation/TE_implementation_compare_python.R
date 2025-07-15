@@ -24,7 +24,7 @@ Output_path <- here("02_TE_implementation","Results/TE_comparison_R_vs_python/")
 nbin <- 11 # Number of bins for TE discritization of continuous data (e.g., SM)
 max_lag <- 90 # Maximum lag to consider (This should be adjusted according to the processes and the temporal resolution of data)
 Lag_Dependent_Crit <- TRUE # Determine if critical TE is lag-dependent
-nshuffle <- 3 # Number of shuffles (bootstrap) for critical TE for statistical inference
+nshuffle <- 500 # Number of shuffles (bootstrap) for critical TE for statistical inference
 alpha <- 0.05 # Confidence level for critical TE
 # Set parallel session
 plan(multisession,workers = availableCores()-1)
@@ -54,7 +54,7 @@ results_df <- Cal_TE_MI_main(Source = AMF_df$SM,
 end_time <- Sys.time()
 print(end_time - start_time)
 
-# Record: running time (3.4 mins)
+# Record: running time (1.1 mins)
 g_TE <- TE_lag_plot(results_df,"SM->ET","None")
 # Output this figure
 print_g(g_TE,"TE_SM_ET_daily_US-Ne1_test",6,4)
