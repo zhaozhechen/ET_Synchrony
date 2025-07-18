@@ -1,17 +1,18 @@
 # Author: Zhaozhe Chen
-# Update date: 2025.7.7
+# Update date: 2025.7.18
 
 # This code is to run TE at hourly scale
+# Test at Site US-Ne1
 
 # -------- Global ------------
 library(here)
 # Source functions for data processing, TE implementation, and visualization
 source(here("01_Data_processing","AMF_processing_functions.R"))
-source(here("02_TE_implementation","TE_implementation_functions.R"))
+source(here("02_TE_implementation","TE_core_codes.R"))
 source(here("05_Visualization","Plotting_functions.R"))
 
 # Input path for hourly AMF data
-# Note: this is a test dataset at US-Ne1, need to be updated later
+# Note: this is a test dataset at US-Ne1, need to update
 AMF_df <- read.csv(here("00_Data","Data_processed","AMF_hourly_US-Ne1.csv"))
 # Output path for the results
 Output_path <- here("02_TE_implementation","Results","Hourly_TE_test_US-Ne1")
@@ -28,6 +29,9 @@ alpha <- 0.05 # Confidence level for critical TE
 plan(multisession,workers = availableCores()-1)
 # Ensure reproducibility
 set.seed(111)
+# Determines if zero should be adjusted for the Sink and Source variables
+ZFlagSink = FALSE
+ZFlagSource = FALSE
 
 # These are folding parameters to deal with extreme values (outliers) in the time series
 # i.e., extreme values will be binned into the first or last bin
@@ -35,6 +39,7 @@ lower_qt <- 0.001
 upper_qt <- 0.999
 
 # ----------- Main -----------
+# Step 1. Data processing and Calculation of secondary variables ---------------- 
 # Standardize the time of the df
 AMF_df <- Standardize_time(AMF_df)
 # Convert psi_soil to log(psi_soil) to reduce skewness
@@ -54,12 +59,73 @@ df <- data.frame(
   delta_ET)
 
 # Get diurnal anomaly
-df$delta_log10_psi_soil_anomaly <- 
-  Cal_diurnal_anomaly(df,"delta_log10_psi_soil",5)
-df$delta_ET_anomaly <-
-  Cal_diurnal_anomaly(df,"delta_ET",5)
-df$delta_VPD_anomaly <- 
-  Cal_diurnal_anomaly(df,"delta_VPD",5)
+df<- Cal_diurnal_anomaly(df,"delta_log10_psi_soil",5)
+df<- Cal_diurnal_anomaly(df,"delta_VPD",5)
+df<- Cal_diurnal_anomaly(df,"delta_ET",5)
+
+# Step 2. Make TS plots of input variables ----------------------
+
+varname <- "delta_ET"
+y_title <- bquote(Delta~ET)
+
+
+
+# moving window mean for this variable
+varname_mean <- paste0(varname,"_mean")
+# moving window diurnal anomaly
+varname_anomaly <- paste0(varname,"_anomaly")
+# Get titles
+y_title_mean <- substitute(y_title~diurnal~mean,list(y_title=y_title))
+y_title_anomaly <- substitute(y_title~diurnal~anomaly,list(y_title=y_title))
+
+# Plot the full time series of the three variables
+g_original <- TS_all(varname,df,y_title,my_color[1])
+g_mean <- TS_all(varname_mean,df,y_title_mean,my_color[2])
+g_anomaly <- TS_all(varname_anomaly,df,y_title_anomaly,my_color[3])
+
+
+
+# Plot the annual cycle of the three variables
+# Get DOY
+df_annual <- df %>%
+  mutate(DOY = yday(time)) %>%
+  # Calculate daily mean across the years
+  group_by(DOY) %>%
+  mutate(mean = mean(var,na.rm=TRUE),
+         Date = as.Date(format(time,"2020-%m-%d")))
+# Plot the annual cycle
+g_annual <- ggplot(df_annual,aes(x = Date,y=var))+
+  geom_point(alpha = 0.3,size=2,color="grey")+
+  geom_line(aes(y=mean),linewidth=0.8,color="black")+
+  my_theme+
+  scale_x_date(date_breaks = "2 month",date_labels = "%b")+
+  labs(x = "",y=title)
+
+
+
+
+
+
+# Reshape the input df to include the original var, diurnal mean, and diurnal anomaly
+df_tmp <- data.frame(Time = rep(df$Time,3),
+                     Var = c(df[[varname]],df[[var_mean]],df[[var_anomaly]]),
+                     Type = rep(c("Original","Diurnal mean","Diurnal anomaly"),each = nrow(df)))
+
+
+
+
+
+
+
+# Plot the full time series
+g_all <- ggplot(data=df,aes(x = Time,y=.data[[varname]]))+
+  geom_line(color=my_color[1])+
+  my_theme+
+  labs(x="",y=y_title)
+
+
+
+
 
 # TE from delta_VPD_anomaly -> delta_ET_anomaly
 # Timing the TE calculation

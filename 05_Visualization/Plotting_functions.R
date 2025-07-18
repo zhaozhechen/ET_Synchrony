@@ -3,6 +3,10 @@
 
 library(ggplot2)
 library(cowplot)
+library(RColorBrewer)
+
+# 3 colors
+my_color <- brewer.pal(3,"Set2")
 
 # Theme for all plots
 my_theme <- theme(
@@ -34,13 +38,28 @@ print_g <- function(g,title,w,h){
   dev.off()
 }
 
+# This function is to make full time series TS plot
+# Input includes:
+# varname: the variable name in the df
+# df: the data frame
+# y_title: title of y axis
+# varcolor: color for this line
+TS_all <- function(varname,df,y_title,varcolor){
+  g <- ggplot(data=df,aes(x = Time,y=.data[[varname]]))+
+    geom_line(color=varcolor)+
+    my_theme+
+    labs(x="",y=y_title)
+  return(g)
+}
+
+
+
 # This function is to plot both the full time series
 # And the annual cycle (mean across all years)
 # And the distribution of data
 # Input var_TS: The time series of variable to plot
 # Input time: The time for the time series
 # Input title: The title on the y axis
-
 TS_plot <- function(var_TS,time,title){
   # Make a df
   df <- data.frame(time = time,
