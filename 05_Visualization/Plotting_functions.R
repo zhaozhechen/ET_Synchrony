@@ -5,9 +5,6 @@ library(ggplot2)
 library(cowplot)
 library(RColorBrewer)
 
-# 3 colors
-my_color <- brewer.pal(3,"Set2")
-
 # Theme for all plots
 my_theme <- theme(
   #axis.line=element_line(color="black"),
@@ -51,6 +48,58 @@ TS_all <- function(varname,df,y_title,varcolor){
     labs(x="",y=y_title)
   return(g)
 }
+
+# This function is to get annual/diurnal cycle of the target variable
+# Input includes:
+# varname: the variable name in the df
+# df: the data frame
+# cycle: "Annual" or "Diurnal"
+var_cycle <- function(varname,df,cycle){
+  # For annual cycle
+  if(cycle == "Annual"){
+    df_tmp <- df %>%
+      mutate(DOY = yday(Time)) %>%
+      # Calculate daily mean across the years
+      group_by(DOY) %>%
+      summarise(
+        Time = as.Date(format(first(Time),"2020-%m-%d")),
+        mean = mean(.data[[varname]],na.rm=TRUE))
+  }else if(cycle == "Diurnal"){
+    # For diurnal cycle
+    df_tmp <- df %>%
+      mutate(Hour = hour(Time)) %>%
+      # Calculate hourly mean across the day
+      group_by(Hour) %>%
+      summarise(
+        Time = first(Hour),
+        mean = mean(.data[[varname]],na.rm=TRUE))
+  }
+  return(df_tmp)
+}
+
+# This function is to make annual or diurnal time series TS plots
+# Input includes:
+# varname: the variable name in the df
+# df_cycle: summarized df of annual or diurnal cycle
+# cycle: "Annual" or "Diurnal"
+TS_cycle <- function(df_cycle,cycle){
+  df_cycle$Type <- factor(df_cycle$Type,levels=c("Original","Diurnal mean","Diurnal anomaly"))
+  g <- ggplot(df_cycle,aes(x=Time,y=mean,color=Type))+
+    geom_line(aes(y=mean),linewidth=1,alpha=0.7)+
+    my_theme+
+    scale_color_manual(values = my_color)+
+    labs(x = "",y=y_title,color="")+
+    theme(
+      legend.title = element_blank(),
+      legend.position = c(0.8,0.15),
+      legend.background = element_rect(color="black",fill="white"))
+  if(cycle == "Annual"){
+    g <- g+
+      scale_x_date(date_breaks = "2 month",date_labels = "%b")
+  }
+  return(g)
+}
+
 
 
 

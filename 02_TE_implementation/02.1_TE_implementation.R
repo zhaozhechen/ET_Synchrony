@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Update date: 2025.7.18
+# Update date: 2025.7.19
 
 # This code is to run TE at hourly scale
 # Test at Site US-Ne1
@@ -38,6 +38,9 @@ ZFlagSource = FALSE
 lower_qt <- 0.001
 upper_qt <- 0.999
 
+# 3 colors for var, var_diurnal_mean, and var_diurnal_anomaly
+my_color <- brewer.pal(3,"Set2")
+
 # ----------- Main -----------
 # Step 1. Data processing and Calculation of secondary variables ---------------- 
 # Standardize the time of the df
@@ -63,43 +66,66 @@ df<- Cal_diurnal_anomaly(df,"delta_log10_psi_soil",5)
 df<- Cal_diurnal_anomaly(df,"delta_VPD",5)
 df<- Cal_diurnal_anomaly(df,"delta_ET",5)
 
-# Step 2. Make TS plots of input variables ----------------------
+# Step 2. Make TS and histrogram plots of input variables ----------------------
 
 varname <- "delta_ET"
 y_title <- bquote(Delta~ET)
 
 
+# This function makes all TS and histogram plots for the target variable
+# Including the plots of original var, moving diurnal mean, and moving diurnal anomaly
+# Also plots the annual cycle and diurnal cycle of the target variable
+# Input includes:
+# varname: target variable name (the original name)
+# y_title: the original y title (no _anomaly or _mean)
+# df: The target df
+# mycolor: a vector of three
+var_plots_all <- function(varname,y_title,df,my_color){
+  # varname of moving window mean for this variable
+  varname_mean <- paste0(varname,"_mean")
+  # varname of moving window diurnal anomaly
+  varname_anomaly <- paste0(varname,"_anomaly")
+  # Get titles
+  y_title_mean <- substitute(y_title~diurnal~mean,list(y_title=y_title))
+  y_title_anomaly <- substitute(y_title~diurnal~anomaly,list(y_title=y_title))
+  
+  # Plot the full time series of the three variables
+  g_original <- TS_all(varname,df,y_title,my_color[1])
+  g_mean <- TS_all(varname_mean,df,y_title_mean,my_color[2])
+  g_anomaly <- TS_all(varname_anomaly,df,y_title_anomaly,my_color[3])
+  
+  # Annual cycle
+  # Make a df for annual cycle data
+  df_annual <- rbind(var_cycle(varname,df,"Annual"),
+                     var_cycle(varname_mean,df,"Annual"),
+                     var_cycle(varname_anomaly,df,"Annual"))
+  df_annual$Type <- rep(c("Original",
+                          "Diurnal mean",
+                          "Diurnal anomaly"),
+                        each = nrow(df_annual)/3)
+  g_annual <- TS_cycle(df_annual,"Annual")
+  
+  # Diurnal cycle
+  # Make a df for diurnal cycle data
+  df_diurnal <- rbind(var_cycle(varname,df,"Diurnal"),
+                      var_cycle(varname_mean,df,"Diurnal"),
+                      var_cycle(varname_anomaly,df,"Diurnal"))
+  df_diurnal$Type <- rep(c("Original",
+                           "Diurnal mean",
+                           "Diurnal anomaly"),
+                         each = nrow(df_diurnal)/3)
+  g_diurnal <- TS_cycle(df_diurnal,"Diurnal")
+  
+  # Make histogram of the full TS
+  
+  
+}
 
-# moving window mean for this variable
-varname_mean <- paste0(varname,"_mean")
-# moving window diurnal anomaly
-varname_anomaly <- paste0(varname,"_anomaly")
-# Get titles
-y_title_mean <- substitute(y_title~diurnal~mean,list(y_title=y_title))
-y_title_anomaly <- substitute(y_title~diurnal~anomaly,list(y_title=y_title))
 
-# Plot the full time series of the three variables
-g_original <- TS_all(varname,df,y_title,my_color[1])
-g_mean <- TS_all(varname_mean,df,y_title_mean,my_color[2])
-g_anomaly <- TS_all(varname_anomaly,df,y_title_anomaly,my_color[3])
+g_original_cycle <- TS_cycle(varname,df,y_title,"Annual",my_color[1])
 
 
 
-# Plot the annual cycle of the three variables
-# Get DOY
-df_annual <- df %>%
-  mutate(DOY = yday(time)) %>%
-  # Calculate daily mean across the years
-  group_by(DOY) %>%
-  mutate(mean = mean(var,na.rm=TRUE),
-         Date = as.Date(format(time,"2020-%m-%d")))
-# Plot the annual cycle
-g_annual <- ggplot(df_annual,aes(x = Date,y=var))+
-  geom_point(alpha = 0.3,size=2,color="grey")+
-  geom_line(aes(y=mean),linewidth=0.8,color="black")+
-  my_theme+
-  scale_x_date(date_breaks = "2 month",date_labels = "%b")+
-  labs(x = "",y=title)
 
 
 
