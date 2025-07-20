@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Update date: 2025.7.19
+# Update date: 2025.7.20
 
 # This code is to run TE at hourly scale
 # Test at Site US-Ne1
@@ -136,12 +136,104 @@ for(i in 1:length(lower_qt_ls)){
 g_psi <- plot_grid(plotlist = g_psi_all,ncol=1)
 print_g(g_psi,"TE_lag_psi",18,18)
 g_VPD <- plot_grid(plotlist = g_VPD_all,ncol=1)
-print_g(g_psi,"TE_lag_VPD",18,18)
+print_g(g_VPD,"TE_lag_VPD",18,18)
 
+# Step 5. Test lag from the opposite direction --------------------------------
+# Test the other way, only do qt at 0.5%
+lower_qt_ls <- 0.005
+# TE from hourly delta_ET_anomaly -> delta_log10_psi_soil_anomaly -----
+psi_TE_ls <- TE_quantile(Source = df$delta_ET_anomaly,
+                         Sink = df$delta_log10_psi_soil_anomaly,
+                         nbins = n_bin,
+                         Maxlag = max_lag,
+                         alpha = alpha,
+                         nshuffle = nshuffle,
+                         ZFlagSource = ZFlagSource,
+                         ZFlagSink = ZFlagSink,
+                         Lag_Dependent_Crit = Lag_Dependent_Crit,
+                         lower_qt_ls = lower_qt_ls,
+                         title = "ET_to_psi")
+# Make lag plots
+# Get quantile in the title
+qt <- lower_qt_ls * 100
+# Get title for psi and VPD
+psi_title <- bquote(Delta~ET~"\u2192"~Delta~psi~"(q ="~.(qt)*"%)")
+g_ET_psi <- lag_plots_all(psi_TE_ls[[1]],psi_title)
+print_g(g_ET_psi,"TE_lag_ET_to_psi",18,3.6)
 
+# TE from hourly delta_ET_anomaly -> delta_VPD ----
+VPD_TE_ls <- TE_quantile(Source = df$delta_ET_anomaly,
+                         Sink = df$delta_VPD_anomaly,
+                         nbins = n_bin,
+                         Maxlag = max_lag,
+                         alpha = alpha,
+                         nshuffle = nshuffle,
+                         ZFlagSource = ZFlagSource,
+                         ZFlagSink = ZFlagSink,
+                         Lag_Dependent_Crit = Lag_Dependent_Crit,
+                         lower_qt_ls = lower_qt_ls,
+                         title = "ET_to_VPD")
+# Make lag plots
+# Get quantile in the title
+qt <- lower_qt_ls * 100
+# Get title for psi and VPD
+VPD_title <- bquote(Delta~ET~"\u2192"~Delta~VPD~"(q ="~.(qt)*"%)")
+g_ET_VPD <- lag_plots_all(VPD_TE_ls[[1]],VPD_title)
+print_g(g_ET_VPD,"TE_lag_ET_to_VPD",18,3.6)
 
+# Step 6. Get TE between VPD and psi ---------------------
+lower_qt_ls <- 0.005
+# TE from hourly delta_VPD_anomaly -> delta_psi_anomaly
+VPD_psi_TE_ls <- TE_quantile(Source = df$delta_VPD_anomaly,
+                             Sink = df$delta_log10_psi_soil_anomaly,
+                             nbins = n_bin,
+                             Maxlag = max_lag,
+                             alpha = alpha,
+                             nshuffle = nshuffle,
+                             ZFlagSource = ZFlagSource,
+                             ZFlagSink = ZFlagSink,
+                             Lag_Dependent_Crit = Lag_Dependent_Crit,
+                             lower_qt_ls = lower_qt_ls,
+                             title = "VPD_to_psi")
+# Make lag plots
+# Get quantile in the title
+qt <- lower_qt_ls * 100
+# Get title for psi and VPD
+VPD_psi_title <- bquote(Delta~VPD~"\u2192"~Delta~psi~"(q ="~.(qt)*"%)")
+g_VPD_psi <- lag_plots_all(VPD_psi_TE_ls[[1]],VPD_psi_title)
+print_g(g_VPD_psi,"TE_lag_VPD_to_psi",18,3.6)
 
+# TE from hourly delta_psi_anomaly -> delta_VPD_anomaly
+psi_VPD_TE_ls <- TE_quantile(Source = df$delta_log10_psi_soil_anomaly,
+                             Sink = df$delta_VPD_anomaly,
+                             nbins = n_bin,
+                             Maxlag = max_lag,
+                             alpha = alpha,
+                             nshuffle = nshuffle,
+                             ZFlagSource = ZFlagSource,
+                             ZFlagSink = ZFlagSink,
+                             Lag_Dependent_Crit = Lag_Dependent_Crit,
+                             lower_qt_ls = lower_qt_ls,
+                             title = "psi_to_VPD")
+# Make lag plots
+# Get quantile in the title
+qt <- lower_qt_ls * 100
+# Get title for psi and VPD
+psi_VPD_title <- bquote(Delta~psi~"\u2192"~Delta~VPD~"(q ="~.(qt)*"%)")
+g_psi_VPD <- lag_plots_all(psi_VPD_TE_ls[[1]],psi_VPD_title)
+print_g(g_psi_VPD,"TE_lag_psi_to_VPD",18,3.6)
 
+# Step 7. Get peak TE between each two processes --------------------------
+# Only keep qt = 0.5%
+
+psi_ET <- readRDS(paste0(Output_path,"/TE_df_ls_psi.rds"))[[2]]
+print(peak_lag(psi_ET))
+VPD_ET <- readRDS(paste0(Output_path,"/TE_df_ls_VPD.rds"))[[2]]
+print(peak_lag(VPD_ET))
+ET_psi <- readRDS(paste0(Output_path,"/TE_df_ls_ET_to_psi.rds"))[[1]]
+print(peak_lag(ET_psi))
+ET_VPD <- readRDS(paste0(Output_path,"/TE_df_ls_ET_to_VPD.rds"))[[1]]
+print(peak_lag(ET_VPD))
 
 
 

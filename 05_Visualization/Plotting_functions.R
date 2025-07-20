@@ -297,3 +297,15 @@ lag_plots_all <- function(TE_df,my_title){
   return(g_info)
 }
 
+# This function gets the peak normalized TE value and the corresponding lag
+peak_lag <- function(TE_df){
+  # Normalize TE by the Shannon entropy of the sink
+  TE_df <- TE_df %>%
+    mutate(TEnorm = TE_df$TE/Hy * 100)
+  peak_TE <- max(TE_df$TEnorm)
+  lag <- TE_df$Lag[which.max(TE_df$TEnorm)]
+  return(c(peak_TE,lag))
+}
+
+
+
