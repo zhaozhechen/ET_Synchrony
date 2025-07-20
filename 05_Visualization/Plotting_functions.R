@@ -280,5 +280,20 @@ TE_lag_plot <- function(TE_df,Type,my_color){
   return(g)
 }
 
-
+# This function makes plots of information metrics vs lag for different quantiles
+# Input includes:
+# TE_df: the result df from TE
+# title: title for the plots
+lag_plots_all <- function(TE_df,my_title){
+  g_TE <- TE_lag_plot(TE_df,"TE",my_color)+
+    ggtitle(my_title)
+  g_TEnorm <- TE_lag_plot(TE_df,"TEnorm",my_color)
+  g_MI <- TE_lag_plot(TE_df,"MI",my_color)
+  g_Corr <- TE_lag_plot(TE_df,"Corr",my_color)
+  # Put these four plots together
+  g_info <- plot_grid(g_TE,g_TEnorm,g_MI,g_Corr,
+                      nrow = 1,
+                      align = "hv")
+  return(g_info)
+}
 
