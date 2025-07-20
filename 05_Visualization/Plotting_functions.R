@@ -88,11 +88,7 @@ TS_cycle <- function(df_cycle,cycle){
     geom_line(aes(y=mean),linewidth=1,alpha=0.7)+
     my_theme+
     scale_color_manual(values = my_color)+
-    labs(x = "",y=y_title,color="")+
-    theme(
-      legend.title = element_blank(),
-      legend.position = c(0.8,0.15),
-      legend.background = element_rect(color="black",fill="white"))
+    labs(x = "",y=y_title,color="")
   if(cycle == "Annual"){
     g <- g+
       scale_x_date(date_breaks = "2 month",date_labels = "%b")
@@ -100,51 +96,135 @@ TS_cycle <- function(df_cycle,cycle){
   return(g)
 }
 
-
-
-
-# This function is to plot both the full time series
-# And the annual cycle (mean across all years)
-# And the distribution of data
-# Input var_TS: The time series of variable to plot
-# Input time: The time for the time series
-# Input title: The title on the y axis
-TS_plot <- function(var_TS,time,title){
-  # Make a df
-  df <- data.frame(time = time,
-                   var = var_TS)
-  # Plot the full time series
-  g_all <- ggplot(df,aes(x = time,y=var))+
-    geom_point(alpha = 0.3,size=2,color="black")+
-    my_theme+
-    labs(x = "",y=title)
-  # Get DOY
-  df <- df %>%
-    mutate(DOY = yday(time)) %>%
-    # Calculate daily mean across the years
-    group_by(DOY) %>%
-    mutate(mean = mean(var,na.rm=TRUE),
-           Date = as.Date(format(time,"2020-%m-%d")))
-  # Plot the annual cycle
-  g_annual <- ggplot(df,aes(x = Date,y=var))+
-    geom_point(alpha = 0.3,size=2,color="grey")+
-    geom_line(aes(y=mean),linewidth=0.8,color="black")+
-    my_theme+
-    scale_x_date(date_breaks = "2 month",date_labels = "%b")+
-    labs(x = "",y=title)
-  # Plot the distribution of data
-  g_hist <- ggplot(df,aes(var))+
-    geom_histogram(bins = n_bin,color="black",position ="identity",alpha=0.5)+
-    my_theme+
-    labs(x=title)
-  # Combine these three plots
-  g <- plot_grid(g_annual,g_hist,nrow=1,
-                 align = "hv",
-                 axis="tblr")
-  g <- plot_grid(g_all,g,nrow=2,
-                 align = "h",
-                 axis = "tblr")
+# This function is to get the distribution of the input variable
+# Following the same processing method as for TE implementation, so the distribution is the same as that for TE input
+# Input includes:
+# var: the values of the variable
+# ZFlag: whether zero adjustment is needed
+# nbins: # of bins for discretization
+# my_color: color for this variable
+Hist_var <- function(var,ZFlag,nbins,my_color,lower_qt){
+  upper_qt <- 1-lower_qt
+  # Find bounds for the variable
+  var_bd <- find_bounds(var[var!=0],lower_qt,upper_qt)
+  lower_bd <- var_bd[1]
+  upper_bd <- var_bd[2]
+  var <- na.omit(var)
+  # If zero adjustment is needed
+  if(ZFlag == TRUE){
+    nonzero_idx <- which(var !=0 & !is.na(var))
+    # Get non-zero values
+    nonzero_values <- var[nonzero_idx]
+    # Get histogram info for nonzero values, accounting for outliers
+    h <- histogram(nonzero_values,nbins = nbins - 1,lower_bd,upper_bd)
+    # Get the breaks
+    bin_breaks <- h$breaks
+    # Add 0 to the first one
+    bin_breaks <- c(0,bin_breaks)
+    bin_idx <- ZeroAdjustment(var,nbins,ths=10e-4,lower_bd,upper_bd)
+    bin_counts <- table(bin_idx)
+  }else{
+    h <- histogram(var,nbins,lower_bd,upper_bd)
+    bin_breaks <- h$breaks
+    bin_counts <- h$counts
+  }
+  # Get a df for plots
+  hist_df <- data.frame(
+    bin_left = head(bin_breaks,-1),
+    bin_right = tail(bin_breaks,-1),
+    count = as.numeric(bin_counts)
+  ) %>%
+    mutate(bin_center = (bin_left + bin_right)/2,
+           bin_width = (bin_right - bin_left))
+  # Make a histogram
+  g <- ggplot(hist_df,aes(x=bin_center,y=count))+
+    geom_col(width=hist_df$bin_width,fill=my_color,color="black")+
+    labs(x="",y="Count")+
+    ggtitle(paste0("Quantile = ",lower_qt*100,"%"))+
+    my_theme
+  
   return(g)
+}
+
+# This function makes all TS and histogram plots for the target variable
+# Including the plots of original var, moving diurnal mean, and moving diurnal anomaly
+# Also plots the annual cycle and diurnal cycle of the target variable
+# Input includes:
+# varname: target variable name (the original name)
+# y_title: the original y title (no _anomaly or _mean)
+# df: The target df
+# mycolor: a vector of three
+# ZFlag: whether zero-adjustment should be applied to this variable
+# nbins: # of bins for discretization
+var_plots_all <- function(varname,y_title,df,my_color,ZFlag,nbins){
+  # varname of moving window mean for this variable
+  varname_mean <- paste0(varname,"_mean")
+  # varname of moving window diurnal anomaly
+  varname_anomaly <- paste0(varname,"_anomaly")
+  # Get titles
+  y_title_mean <- substitute(y_title~diurnal~mean,list(y_title=y_title))
+  y_title_anomaly <- substitute(y_title~diurnal~anomaly,list(y_title=y_title))
+  
+  # Plot the full time series of the three variables
+  g_original <- TS_all(varname,df,y_title,my_color[1])
+  g_mean <- TS_all(varname_mean,df,y_title_mean,my_color[2])
+  g_anomaly <- TS_all(varname_anomaly,df,y_title_anomaly,my_color[3])
+  
+  # Make histogram using all data from each full TS
+  # Following the same processing method as for TE implementation, so the distribution is the same as that for TE input
+  lower_qt_ls <- c(0.001,0.005,0.01,0.05,0.1)
+  # Initialize lists for storing distribution for different quantile conditions
+  g_hist_original_ls <- list()
+  g_hist_mean_ls <- list()
+  g_hist_anomaly_ls <- list()
+  
+  # Test multiple quantiles for dealing with outliers
+  for(i in 1:length(lower_qt_ls)){
+    lower_qt <- lower_qt_ls[i]
+    upper_qt <- 1-lower_qt
+    g_hist_original <- Hist_var(df[[varname]],ZFlag,nbins,my_color[1],lower_qt)
+    g_hist_original_ls[[i]] <- g_hist_original
+    
+    g_hist_mean <- Hist_var(df[[varname_mean]],ZFlag,nbins,my_color[2],lower_qt)
+    g_hist_mean_ls[[i]] <- g_hist_mean
+    
+    g_hist_anomaly <- Hist_var(df[[varname_anomaly]],ZFlag,nbins,my_color[3],lower_qt)
+    g_hist_anomaly_ls[[i]] <- g_hist_anomaly
+  }
+  
+  # Annual cycle
+  # Make a df for annual cycle data
+  df_annual <- rbind(var_cycle(varname,df,"Annual"),
+                     var_cycle(varname_mean,df,"Annual"),
+                     var_cycle(varname_anomaly,df,"Annual"))
+  df_annual$Type <- rep(c("Original",
+                          "Diurnal mean",
+                          "Diurnal anomaly"),
+                        each = nrow(df_annual)/3)
+  g_annual <- TS_cycle(df_annual,"Annual")
+  
+  # Diurnal cycle
+  # Make a df for diurnal cycle data
+  df_diurnal <- rbind(var_cycle(varname,df,"Diurnal"),
+                      var_cycle(varname_mean,df,"Diurnal"),
+                      var_cycle(varname_anomaly,df,"Diurnal"))
+  df_diurnal$Type <- rep(c("Original",
+                           "Diurnal mean",
+                           "Diurnal anomaly"),
+                         each = nrow(df_diurnal)/3)
+  g_diurnal <- TS_cycle(df_diurnal,"Diurnal")
+  
+  # Put all figures together
+  g1 <- plot_grid(plotlist = g_hist_original_ls,nrow=1)
+  g2 <- plot_grid(plotlist = g_hist_mean_ls,nrow=1)
+  g3 <- plot_grid(plotlist = g_hist_anomaly_ls,nrow=1)
+  g4 <- plot_grid(g_annual,g_diurnal,nrow=1)
+  g_all <- plot_grid(g_original,g1,
+                  g_mean,g2,
+                  g_anomaly,g3,
+                  ncol=1,align="v",axis = "lr")
+  g_all <- plot_grid(g_all,g4,nrow=2,rel_heights = c(6,1),align="hv")
+  return(g_all)
 }
 
 # This function is to plot TE vs lag from var1 to var2
