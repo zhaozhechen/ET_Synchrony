@@ -16,3 +16,7 @@ Write overview here
 - **NETRAD**: Net radiation (Unit: Wm-2)
 - **TS**: Soil temperature (Unit: degree C)
 - **LE_F**: Latent heat flux (Unit: Wm-2)
+
+## 02_TE_implementation
+### TE_core_codes
+`TE_core_codes.R` contains the core functions for TE implementation, the functions are adapted from Edom Moges
