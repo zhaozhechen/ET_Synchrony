@@ -227,26 +227,57 @@ var_plots_all <- function(varname,y_title,df,my_color,ZFlag,nbins){
   return(g_all)
 }
 
-# This function is to plot TE vs lag from var1 to var2
-# Input is the TE_df
-# And the name of the two variables varname1 and varname2
-# And title of the plot
-# norm: "None","Shannon" or "Theory"
-TE_lag_plot <- function(TE_df,title,norm){
-  if(norm == "None"){
+# This function is to plot information metrics vs lag
+# Input includes:
+# TE_df: the result df from TE
+# Type: "TE", "MI","Corr","TEnorm"
+# my_color: A three vector color for the plots
+TE_lag_plot <- function(TE_df,Type,my_color){
+  if(Type == "TE"){
+    varname <- "TE"
     y_title <- "TE (bits)"
-  }else{
-    y_title <- "TE (%)"
+  }else if(Type == "MI"){
+    varname <- "MI"
+    y_title <- "MI (bits)"
+  }else if(Type == "Corr"){
+    varname <- "Corr"
+    y_title <- "Correlation"
+  }else if(Type == "TEnorm"){
+    # Normalize TE by Shannon entropy of the sink
+    TE_df <- TE_df %>%
+      mutate(TEnorm = TE/Hy * 100,
+             TEnormcrit = TEcrit/Hy * 100)
+    varname <- "TEnorm"
+    y_title <- "Uncertainty reduction (%)"
   }
-  # Plot of TE
-  g_TE <- ggplot(data=TE_df,aes(x=Lag,y=TE))+
-    geom_line(linewidth = 0.4)+
-    #geom_ribbon(aes(ymin = TE-TE_se,ymax=TE+TE_se),alpha=0.3,color=NA)+
-    geom_line(aes(y=TEcrit),linewidth=0.4,linetype = "dashed",color="royalblue2")+
+  # Critical value varname
+  varname_crit <- paste0(varname,"crit")
+  # Plot of the information metric vs lag
+  g <- ggplot(TE_df,aes(x=Lag,y=.data[[varname]]))+
+    geom_line(linewidth = 0.8,color=my_color[1])+
+    geom_line(aes(y=.data[[varname_crit]]),
+              linewidth = 0.8,
+              linetype = "dashed",
+              color=my_color[3])+
     my_theme+
-    labs(x = "Lag (days)",y=y_title,color="",fill="")+
-    ggtitle(title)
-  return(g_TE)
+    labs(x = "Lag (hours)",y=y_title,color="")
+  # Get the peak and corresponding lag
+  if(Type == "TE"|Type == "MI"|Type == "TEnorm"){
+    best_lag <- TE_df$Lag[which.max(TE_df[[varname]])]
+    # Add this best lag to the plot, and annotate it
+    g <- g +
+      geom_vline(xintercept = best_lag,
+                 color=my_color[2],
+                 linewidth = 0.8)+
+      annotate("text",
+               x=best_lag,
+               y=max(TE_df[[varname]]*1.05,na.rm=TRUE),
+               label = paste0("Best Lag = ",best_lag),
+               size=5,
+               hjust = -0.2,
+               color=my_color[2])
+  }
+  return(g)
 }
 
 

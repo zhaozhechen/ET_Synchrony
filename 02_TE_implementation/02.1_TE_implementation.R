@@ -81,7 +81,7 @@ if(TS_Hist_plot == TRUE){
   print_g(g_ET,"TS_Hist_delta_ET",18,18)  
 }
 
-# Step 3. Run hourly TE at multiple quantile --------------------
+# Step 3. Run hourly TE at multiple quantiles --------------------
 # Test multiple lower_qt
 lower_qt_ls <- c(0.001,0.005,0.01,0.05,0.1)
 # TE from hourly delta_log10_psi_soil_anomaly -> delta_ET_anomaly
@@ -98,7 +98,7 @@ psi_TE_ls <- TE_quantile(Source = df$delta_log10_psi_soil_anomaly,
                          title = "psi")
 
 # TE from hourly delta_VPD_anomaly -> delta_ET_anomaly
-VPD_TE_ls <- TE_quantile(Source = df$delta_log10_psi_soil_anomaly,
+VPD_TE_ls <- TE_quantile(Source = df$delta_VPD_anomaly,
                          Sink = df$delta_ET_anomaly,
                          nbins = n_bin,
                          Maxlag = max_lag,
@@ -109,6 +109,39 @@ VPD_TE_ls <- TE_quantile(Source = df$delta_log10_psi_soil_anomaly,
                          Lag_Dependent_Crit = Lag_Dependent_Crit,
                          lower_qt_ls = lower_qt_ls,
                          title = "VPD")
+
+# Step 4. Make plots of information metrics vs lag for multiple quantiles ---------------
+# Loop over the tested quantiles
+# Initialize a list to store the plots
+g_psi_all <- list()
+g_VPD_all <- list()
+
+for(i in 1:length(lower_qt_ls)){
+  # Extract parameters and results for this tested quantile
+  lower_qt <- lower_qt_ls[i]
+  psi_TE_df <- psi_TE_ls[[i]]
+  VPD_TE_df <- VPD_TE_ls[[i]]
+  # Get quantile in the title
+  qt <- lower_qt * 100
+  # Get title for psi and VPD
+  psi_title <- bquote(Delta~psi~"\u2192"~Delta~ET~"(q ="~.(qt)*"%)")
+  VPD_title <- bquote(Delta~VPD~"\u2192"~Delta~ET~"(q ="~.(qt)*"%)")
+  g_psi <- lag_plots_all(psi_TE_df,psi_title)
+  g_VPD <- lag_plots_all(VPD_TE_df,VPD_title)
+  g_psi_all[[i]] <- g_psi
+  g_VPD_all[[i]] <- g_VPD
+}
+
+# Output these plots
+g_psi <- plot_grid(plotlist = g_psi_all,ncol=1)
+print_g(g_psi,"TE_lag_psi",18,18)
+g_VPD <- plot_grid(plotlist = g_VPD_all,ncol=1)
+print_g(g_psi,"TE_lag_VPD",18,18)
+
+
+
+
+
 
 
 
