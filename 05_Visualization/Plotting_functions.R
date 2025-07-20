@@ -82,7 +82,7 @@ var_cycle <- function(varname,df,cycle){
 # varname: the variable name in the df
 # df_cycle: summarized df of annual or diurnal cycle
 # cycle: "Annual" or "Diurnal"
-TS_cycle <- function(df_cycle,cycle){
+TS_cycle <- function(df_cycle,cycle,y_title){
   df_cycle$Type <- factor(df_cycle$Type,levels=c("Original","Diurnal mean","Diurnal anomaly"))
   g <- ggplot(df_cycle,aes(x=Time,y=mean,color=Type))+
     geom_line(aes(y=mean),linewidth=1,alpha=0.7)+
@@ -201,7 +201,7 @@ var_plots_all <- function(varname,y_title,df,my_color,ZFlag,nbins){
                           "Diurnal mean",
                           "Diurnal anomaly"),
                         each = nrow(df_annual)/3)
-  g_annual <- TS_cycle(df_annual,"Annual")
+  g_annual <- TS_cycle(df_annual,"Annual",y_title)
   
   # Diurnal cycle
   # Make a df for diurnal cycle data
@@ -212,7 +212,7 @@ var_plots_all <- function(varname,y_title,df,my_color,ZFlag,nbins){
                            "Diurnal mean",
                            "Diurnal anomaly"),
                          each = nrow(df_diurnal)/3)
-  g_diurnal <- TS_cycle(df_diurnal,"Diurnal")
+  g_diurnal <- TS_cycle(df_diurnal,"Diurnal",y_title)
   
   # Put all figures together
   g1 <- plot_grid(plotlist = g_hist_original_ls,nrow=1)

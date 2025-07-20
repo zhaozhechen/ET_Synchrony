@@ -30,8 +30,11 @@ plan(multisession,workers = availableCores()-1)
 # Ensure reproducibility
 set.seed(111)
 # Determines if zero should be adjusted for the Sink and Source variables
-ZFlagSink = FALSE
-ZFlagSource = FALSE
+ZFlagSink <- FALSE
+ZFlagSource <- FALSE
+
+# Whether to plot TS and histogram of the source and sink
+TS_Hist_plot <- FALSE
 
 # These are folding parameters to deal with extreme values (outliers) in the time series
 # i.e., extreme values will be binned into the first or last bin
@@ -67,75 +70,45 @@ df<- Cal_diurnal_anomaly(df,"delta_VPD",5)
 df<- Cal_diurnal_anomaly(df,"delta_ET",5)
 
 # Step 2. Make TS and histogram plots of input variables ----------------------
-# Test optimal qt for removing outliers
-lower_qt_ls <- c(0.001,0.005,0.01)
-for(lower_qt in lower_qt_ls){
-  upper_qt <- 1- lower_qt
-  g_delta_log10_psi_soil <- var_plots_all("delta_log10_psi_soil",bquote(Delta~psi),df,my_color,ZFlag = FALSE,nbins=n_bin)
-  g_delta_VPD <- var_plots_all("delta_VPD",bquote(Delta~VPD),df,my_color,ZFlag = FALSE,nbins=n_bin)
-  g_delta_ET <- var_plots_all("delta_ET",bquote(Delta~ET),df,my_color,ZFlag = FALSE,nbins=n_bin)
+# Get TS plots and and distribution for psi, VPD and ET
+# Output distributions of target variables with multiple quantile for outlier handling
+if(TS_Hist_plot == TRUE){
+  g_psi <- var_plots_all("delta_log10_psi_soil",bquote(Delta~psi),df,my_color,ZFlag = FALSE,nbins=n_bin)
+  g_VPD <- var_plots_all("delta_VPD",bquote(Delta~VPD),df,my_color,ZFlag = FALSE,nbins=n_bin)
+  g_ET <- var_plots_all("delta_ET",bquote(Delta~ET),df,my_color,ZFlag = FALSE,nbins=n_bin)
+  print_g(g_psi,"TS_Hist_delta_psi",18,18)
+  print_g(g_VPD,"TS_Hist_delta_VPD",18,18)
+  print_g(g_ET,"TS_Hist_delta_ET",18,18)  
 }
 
+# Step 3. Run hourly TE at multiple quantile --------------------
+# Test multiple lower_qt
+lower_qt_ls <- c(0.001,0.005,0.01,0.05,0.1)
+# TE from hourly delta_log10_psi_soil_anomaly -> delta_ET_anomaly
+psi_TE_ls <- TE_quantile(Source = df$delta_log10_psi_soil_anomaly,
+                         Sink = df$delta_ET_anomaly,
+                         nbins = n_bin,
+                         Maxlag = max_lag,
+                         alpha = alpha,
+                         nshuffle = nshuffle,
+                         ZFlagSource = ZFlagSource,
+                         ZFlagSink = ZFlagSink,
+                         Lag_Dependent_Crit = Lag_Dependent_Crit,
+                         lower_qt_ls = lower_qt_ls,
+                         title = "psi")
 
+# TE from hourly delta_VPD_anomaly -> delta_ET_anomaly
+VPD_TE_ls <- TE_quantile(Source = df$delta_log10_psi_soil_anomaly,
+                         Sink = df$delta_ET_anomaly,
+                         nbins = n_bin,
+                         Maxlag = max_lag,
+                         alpha = alpha,
+                         nshuffle = nshuffle,
+                         ZFlagSource = ZFlagSource,
+                         ZFlagSink = ZFlagSink,
+                         Lag_Dependent_Crit = Lag_Dependent_Crit,
+                         lower_qt_ls = lower_qt_ls,
+                         title = "VPD")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-if(FALSE){
-  # TE from delta_VPD_anomaly -> delta_ET_anomaly
-  # Timing the TE calculation
-  start_time <- Sys.time()
-  VPD_TE_df <- Cal_TE_main(var1 = df$delta_VPD_anomaly,
-                           var2 = df$delta_ET_anomaly,
-                           max_lag = max_lag,
-                           nbins = n_bin,
-                           alpha = alpha,
-                           nshuffle = nshuffle,
-                           upper_qt = upper_qt,
-                           lower_qt = lower_qt,
-                           ZFlag_Source = FALSE,
-                           ZFlag_Sink = FALSE)
-  end_time <- Sys.time()
-  run_time <- as.character(end_time - start_time)
-  writeLines(run_time,con=paste0(Output_path,"/TE_VPD_log.txt"))
-  write.csv(VPD_TE_df,paste0(Output_path,"/TE_df_US-Ne1_hourly_VPD_ET.csv"))
-  g <- TE_lag_plot(VPD_TE_df,"VPD->ET","None")
-  print_g(g,"TE_US-Ne1_hourly_VPD_ET",6,4)
-  
-  # TE from delta_log10_psi_soil_anomaly -> delta_ET_anomaly
-  # Timing the TE calculation
-  start_time <- Sys.time()
-  psi_TE_df <- Cal_TE_main(var1 = df$delta_log10_psi_soil_anomaly,
-                           var2 = df$delta_ET_anomaly,
-                           max_lag = max_lag,
-                           nbins = n_bin,
-                           alpha = alpha,
-                           nshuffle = nshuffle,
-                           upper_qt = upper_qt,
-                           lower_qt = lower_qt,
-                           ZFlag_Source = FALSE,
-                           ZFlag_Sink = FALSE)
-  end_time <- Sys.time()
-  run_time <- as.character(end_time - start_time)
-  writeLines(run_time,con=paste0(Output_path,"/TE_psi_log.txt"))
-  write.csv(psi_TE_df,paste0(Output_path,"/TE_df_US-Ne1_hourly_psi_ET.csv"))
-  g <- TE_lag_plot(psi_TE_df,"psi->ET","None")
-  print_g(g,"TE_US-Ne1_hourly_psi_ET",6,4)
-  
-}
 
 

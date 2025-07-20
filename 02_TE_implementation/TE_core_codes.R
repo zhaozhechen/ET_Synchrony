@@ -309,7 +309,7 @@ cal_critical_TE_MI_Corr <- function(M,nbins,lower_bd,upper_bd,ZFlag,nshuffle,alp
 # Maxlag: allowed maximum lag
 # ZFlagSink/ZFlagSource: whether the sink/source variables need zero-adjustment (TRUE or FALSE)
 # Lag_Dependet_Crit: whether need lag-dependent critical values (TRUE or FALSE)
-Cal_TE_MI_main <- function(Source,Sink,nbins,nshuffle,alpha,Maxlag,ZFlagSink,ZFlagSource,Lag_Dependent_Crit){
+Cal_TE_MI_main <- function(Source,Sink,nbins,nshuffle,alpha,Maxlag,ZFlagSink,ZFlagSource,Lag_Dependent_Crit,lower_qt,upper_qt){
   # Get bounds of source and sink variables (only for nonzero values)
   Source_bd <- find_bounds(Source[Source!=0],lower_qt,upper_qt)
   Sink_bd <- find_bounds(Sink[Sink!=0],lower_qt,upper_qt)
@@ -365,4 +365,50 @@ Cal_TE_MI_main <- function(Source,Sink,nbins,nshuffle,alpha,Maxlag,ZFlagSink,ZFl
   return(results_df)
 }
 
-
+# This function runs hourly TE from var1 to var2 using multiple quantiles for outlier handling
+# This is to test the effect of quantile selection
+# Input include:
+# # Source: the TS of source variable
+# Sink: the TS of sink variable
+# nbins: number of total bins for descretization:
+# nshuffle: number of shuffle for critical value calculation
+# alpha: value for statistical inference
+# Maxlag: allowed maximum lag
+# ZFlagSink/ZFlagSource: whether the sink/source variables need zero-adjustment (TRUE or FALSE)
+# Lag_Dependet_Crit: whether need lag-dependent critical values (TRUE or FALSE)
+# lower_qt_ls: A vector of lower_qt to be tested
+# title: title for the output file
+TE_quantile <- function(Source,Sink,Maxlag,nbins,alpha,nshuffle,ZFlagSource,ZFlagSink,Lag_Dependent_Crit,lower_qt_ls,title){
+  # Initialize a list to store all TE_df
+  TE_df_ls <- list()
+  run_time_all <- c()
+  
+  for(i in 1:length(lower_qt_ls)){
+    lower_qt <- lower_qt_ls[i]
+    upper_qt <- 1-lower_qt
+    # Timing the TE calculation
+    start_time <- Sys.time()
+    TE_df <- Cal_TE_MI_main(Source = Source,
+                         Sink = Sink,
+                         nbins = nbins,
+                         Maxlag = Maxlag,
+                         alpha = alpha,
+                         nshuffle = nshuffle,
+                         upper_qt = upper_qt,
+                         lower_qt = lower_qt,
+                         ZFlagSource = ZFlagSource,
+                         ZFlagSink = ZFlagSink,
+                         Lag_Dependent_Crit = Lag_Dependent_Crit)
+    end_time <- Sys.time()
+    run_time <- as.character(end_time - start_time)
+    TE_df_ls[[i]] <- TE_df
+    run_time_all <- c(run_time_all,run_time)
+    message(run_time)
+  }
+  run_time_df <- data.frame(quantile = lower_qt_ls,
+                            run_time = run_time_all)
+  # Output TE_ls and run_time
+  saveRDS(TE_df_ls,paste0(Output_path,"/TE_df_ls_",title,".rds"))
+  write.csv(run_time_df,paste0(Output_path,"/runtime_",title,".csv"))
+  return(TE_df_ls)
+}
