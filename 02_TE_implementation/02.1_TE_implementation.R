@@ -34,7 +34,7 @@ ZFlagSink <- FALSE
 ZFlagSource <- FALSE
 
 # Whether to plot TS and histogram of the source and sink
-TS_Hist_plot <- FALSE
+TS_Hist_plot <- TRUE
 
 # These are folding parameters to deal with extreme values (outliers) in the time series
 # i.e., extreme values will be binned into the first or last bin
@@ -234,6 +234,12 @@ ET_psi <- readRDS(paste0(Output_path,"/TE_df_ls_ET_to_psi.rds"))[[1]]
 print(peak_lag(ET_psi))
 ET_VPD <- readRDS(paste0(Output_path,"/TE_df_ls_ET_to_VPD.rds"))[[1]]
 print(peak_lag(ET_VPD))
+psi_VPD <- readRDS(paste0(Output_path,"/TE_df_ls_psi_to_VPD.rds"))[[1]]
+print(peak_lag(psi_VPD))
+VPD_psi <- readRDS(paste0(Output_path,"/TE_df_ls_VPD_to_psi.rds"))[[1]]
+print(peak_lag(VPD_psi))
+
+# Step 8. Plot diurnal sd of variables -------------------------
 
 
 

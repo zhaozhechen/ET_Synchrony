@@ -63,7 +63,8 @@ var_cycle <- function(varname,df,cycle){
       group_by(DOY) %>%
       summarise(
         Time = as.Date(format(first(Time),"2020-%m-%d")),
-        mean = mean(.data[[varname]],na.rm=TRUE))
+        mean = mean(.data[[varname]],na.rm=TRUE),
+        sd = sd(.data[[varname]],na.rm=TRUE))
   }else if(cycle == "Diurnal"){
     # For diurnal cycle
     df_tmp <- df %>%
@@ -72,7 +73,8 @@ var_cycle <- function(varname,df,cycle){
       group_by(Hour) %>%
       summarise(
         Time = first(Hour),
-        mean = mean(.data[[varname]],na.rm=TRUE))
+        mean = mean(.data[[varname]],na.rm=TRUE),
+        sd = sd(.data[[varname]],na.rm=TRUE))
   }
   return(df_tmp)
 }
@@ -82,16 +84,22 @@ var_cycle <- function(varname,df,cycle){
 # varname: the variable name in the df
 # df_cycle: summarized df of annual or diurnal cycle
 # cycle: "Annual" or "Diurnal"
-TS_cycle <- function(df_cycle,cycle,y_title){
+# var_to_plot: "mean" or "sd"
+TS_cycle <- function(df_cycle,cycle,y_title,var_to_plot){
   df_cycle$Type <- factor(df_cycle$Type,levels=c("Original","Diurnal mean","Diurnal anomaly"))
-  g <- ggplot(df_cycle,aes(x=Time,y=mean,color=Type))+
-    geom_line(aes(y=mean),linewidth=1,alpha=0.7)+
+  g <- ggplot(df_cycle,aes(x=Time,color=Type))+
+    geom_line(aes(y=.data[[var_to_plot]]),linewidth=1,alpha=0.7)+
     my_theme+
     scale_color_manual(values = my_color)+
     labs(x = "",y=y_title,color="")
   if(cycle == "Annual"){
     g <- g+
       scale_x_date(date_breaks = "2 month",date_labels = "%b")
+  }
+  if(var_to_plot == "sd"){
+    y_title <- bquote(.(y_title)~sd)
+    g <- g+
+      labs(y = y_title)
   }
   return(g)
 }
@@ -201,7 +209,7 @@ var_plots_all <- function(varname,y_title,df,my_color,ZFlag,nbins){
                           "Diurnal mean",
                           "Diurnal anomaly"),
                         each = nrow(df_annual)/3)
-  g_annual <- TS_cycle(df_annual,"Annual",y_title)
+  g_annual <- TS_cycle(df_annual,"Annual",y_title,"mean")
   
   # Diurnal cycle
   # Make a df for diurnal cycle data
@@ -212,13 +220,14 @@ var_plots_all <- function(varname,y_title,df,my_color,ZFlag,nbins){
                            "Diurnal mean",
                            "Diurnal anomaly"),
                          each = nrow(df_diurnal)/3)
-  g_diurnal <- TS_cycle(df_diurnal,"Diurnal",y_title)
+  g_diurnal_mean <- TS_cycle(df_diurnal,"Diurnal",y_title,"mean")
+  g_diurnal_sd <- TS_cycle(df_diurnal,"Diurnal",y_title,"sd")
   
   # Put all figures together
   g1 <- plot_grid(plotlist = g_hist_original_ls,nrow=1)
   g2 <- plot_grid(plotlist = g_hist_mean_ls,nrow=1)
   g3 <- plot_grid(plotlist = g_hist_anomaly_ls,nrow=1)
-  g4 <- plot_grid(g_annual,g_diurnal,nrow=1)
+  g4 <- plot_grid(g_annual,g_diurnal_mean,g_diurnal_sd,nrow=1)
   g_all <- plot_grid(g_original,g1,
                   g_mean,g2,
                   g_anomaly,g3,
@@ -298,6 +307,7 @@ lag_plots_all <- function(TE_df,my_title){
 }
 
 # This function gets the peak normalized TE value and the corresponding lag
+# Note: should consider critical values. Need to update
 peak_lag <- function(TE_df){
   # Normalize TE by the Shannon entropy of the sink
   TE_df <- TE_df %>%
