@@ -239,7 +239,6 @@ print(peak_lag(psi_VPD))
 VPD_psi <- readRDS(paste0(Output_path,"/TE_df_ls_VPD_to_psi.rds"))[[1]]
 print(peak_lag(VPD_psi))
 
-# Step 8. Plot diurnal sd of variables -------------------------
 
 
 

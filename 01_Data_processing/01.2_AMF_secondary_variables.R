@@ -2,9 +2,7 @@
 # Update date: 2025.7.7
 
 # This code matches soil properties to AMF sites
-# And calculates secondary variables from cleaned AMF dataset
-# Including: Growing season index (GSI)
-# Next steps: calculate GSI
+# This code is done, no need to rerun, unless need to match a few sites with missing values
 
 # ---------- Global ---------------
 library(here)

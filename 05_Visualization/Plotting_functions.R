@@ -289,7 +289,7 @@ TE_lag_plot <- function(TE_df,Type,my_color){
   return(g)
 }
 
-# This function makes plots of information metrics vs lag for different quantiles
+# This function makes plots of information metrics vs lag for different metrics
 # Input includes:
 # TE_df: the result df from TE
 # title: title for the plots

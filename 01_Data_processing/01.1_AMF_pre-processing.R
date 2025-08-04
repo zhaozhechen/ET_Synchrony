@@ -8,6 +8,7 @@
 # All half-hourly data was aggregated to hourly
 # The variables were output as in their original units.
 # Outputs 5 files, corresponding to the original 5 files
+# This code is done. No need to run the second time
 
 # --------- Global ---------
 library(here)
