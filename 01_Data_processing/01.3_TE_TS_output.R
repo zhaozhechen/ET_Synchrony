@@ -4,6 +4,7 @@
 # This code uses cleaned AMF hourly data as input,
 # and outputs final time series of target variables for TE implementation for all sites
 # One file for each site for simplicity
+# This code is done, no need to rerun
 
 # ---------- Global ---------------
 library(here)

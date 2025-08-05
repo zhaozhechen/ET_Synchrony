@@ -4,6 +4,7 @@
 library(ggplot2)
 library(cowplot)
 library(RColorBrewer)
+library(data.table)
 
 # Theme for all plots
 my_theme <- theme(
@@ -40,11 +41,15 @@ print_g <- function(g,title,w,h){
 # varname: the variable name in the df
 # df: the data frame
 # y_title: title of y axis
-# varcolor: color for this line
+# varcolor: color for GS and non-GS, should be a vector of 2
 TS_all <- function(varname,df,y_title,varcolor){
-  g <- ggplot(data=df,aes(x = Time,y=.data[[varname]]))+
-    geom_line(color=varcolor)+
+  g <- ggplot(data=df)+
+    #geom_line(color=varcolor)+
+    geom_segment(aes(x=Time, xend = Time,y = 0,yend = .data[[varname]],
+                     color = GS))+
     my_theme+
+    scale_color_manual(values = c("GS" = varcolor[1],
+                                  "Non-GS" = varcolor[2]))+
     labs(x="",y=y_title)
   return(g)
 }
@@ -104,6 +109,66 @@ TS_cycle <- function(df_cycle,cycle,y_title,var_to_plot){
   return(g)
 }
 
+
+# This function plots the annual cycle of the target variable, color coded by GS
+# Input includes:
+# varname: the variable name in the df
+# df: original df
+# varcolor: color for GS and non-GS, should be a vector of 2
+TS_annual <- function(varname,df,y_title,varcolor){
+  df_tmp <- df %>%
+    mutate(DOY = yday(Time)) %>%
+    # Calculate daily mean across the years
+    group_by(DOY) %>%
+    summarise(
+      Time = as.Date(format(first(Time),"2020-%m-%d")),
+      mean = mean(.data[[varname]],na.rm=TRUE),
+      sd = sd(.data[[varname]],na.rm=TRUE),
+      GS = first(GS)) %>%
+    # Break the line for plotting
+    arrange(Time) %>%
+    mutate(group_id = rleid(GS))
+  g <- ggplot(df_tmp,aes(x=Time,y=mean,color=GS,group=group_id))+
+    geom_ribbon(aes(ymin = mean - sd,ymax = mean + sd,fill=GS),color=NA,alpha=0.3)+
+    geom_line(size=1)+
+    scale_color_manual(values = c("GS" = varcolor[1],
+                                  "Non-GS" = varcolor[2]))+
+    scale_fill_manual(values = c("GS" = varcolor[1],
+                                  "Non-GS" = varcolor[2]))+
+    my_theme+
+    labs(x="",y=y_title)+
+    scale_x_date(date_breaks = "2 month",date_labels = "%b")
+  return(g)
+}
+
+# This function plots the diurnal cycle of the target variable, color coded by GS
+# Input includes:
+# varname: the variable name in the df
+# df: original df
+# varcolor: color for GS and non-GS, should be a vector of 2
+TS_diurnal <- function(varname,df,y_title,varcolor){
+  # For diurnal cycle
+  df_tmp <- df %>%
+    mutate(Hour = hour(Time)) %>%
+    # Calculate hourly mean across the day
+    group_by(Hour,GS) %>%
+    summarise(
+      Time = first(Hour),
+      mean = mean(.data[[varname]],na.rm=TRUE),
+      sd = sd(.data[[varname]],na.rm=TRUE))
+  g <- ggplot(df_tmp,aes(x=Time,y=mean,color=GS,fill=GS))+
+    geom_ribbon(aes(ymin = mean - sd,ymax = mean + sd),color=NA,alpha=0.3)+
+    geom_line(size=1)+
+    scale_color_manual(values = c("GS" = varcolor[1],
+                                  "Non-GS" = varcolor[2]))+
+    scale_fill_manual(values = c("GS" = varcolor[1],
+                                 "Non-GS" = varcolor[2]))+
+    my_theme+
+    labs(x="Hour of the day",y=y_title)
+  return(g)
+}
+
+
 # This function is to get the distribution of the input variable
 # Following the same processing method as for TE implementation, so the distribution is the same as that for TE input
 # Input includes:
@@ -153,6 +218,61 @@ Hist_var <- function(var,ZFlag,nbins,my_color,lower_qt){
   
   return(g)
 }
+
+# This function is to get the histogram bins for the target variable for the desired GS status (GS or Non-GS)
+# Following the same processing method as for TE implementation, so the distribution is the same as that for TE input
+# Input includes:
+# varname: the variable name
+# df: the original df
+# ZFlag: whether zero adjustment is needed
+# nbins: # of bins for discretization
+# gs: "GS" or "Non-GS"
+Hist_var_GS <- function(varname,df,ZFlag,nbins,gs){
+  # Get values for the required GS type
+  var <- df[[varname]][df$GS == gs]
+  # Find bounds for the variable
+  var_bd <- find_bounds(var[var!=0],lower_qt,upper_qt)
+  lower_bd <- var_bd[1]
+  upper_bd <- var_bd[2]
+  var <- na.omit(var)
+  # If zero adjustment is needed
+  if(ZFlag == TRUE){
+    nonzero_idx <- which(var !=0 & !is.na(var))
+    # Get non-zero values
+    nonzero_values <- var[nonzero_idx]
+    # Get histogram info for nonzero values, accounting for outliers
+    h <- histogram(nonzero_values,nbins = nbins - 1,lower_bd,upper_bd)
+    # Get the breaks
+    bin_breaks <- h$breaks
+    # Add 0 to the first one
+    bin_breaks <- c(0,bin_breaks)
+    bin_idx <- ZeroAdjustment(var,nbins,ths=10e-4,lower_bd,upper_bd)
+    bin_counts <- table(bin_idx)
+  }else{
+    h <- histogram(var,nbins,lower_bd,upper_bd)
+    bin_breaks <- h$breaks
+    bin_counts <- h$counts
+  }
+  # Get a df for plots
+  hist_df <- data.frame(
+    bin_left = head(bin_breaks,-1),
+    bin_right = tail(bin_breaks,-1),
+    count = as.numeric(bin_counts)
+  ) %>%
+    mutate(bin_center = (bin_left + bin_right)/2,
+           bin_width = (bin_right - bin_left))
+  return(hist_df)
+}
+
+
+Hist_GS_plot <- function(){
+  
+  
+  
+  
+  
+}
+
 
 # This function makes all TS and histogram plots for the target variable
 # Including the plots of original var, moving diurnal mean, and moving diurnal anomaly

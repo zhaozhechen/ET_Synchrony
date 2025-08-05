@@ -45,8 +45,8 @@ TS_Hist_plot <- TRUE
 lower_qt <- 0.001
 upper_qt <- 1-lower_qt
 
-# 3 colors for var, var_diurnal_mean, and var_diurnal_anomaly
-my_color <- brewer.pal(3,"Set2")
+# 2 colors for growing season and non-growing season
+season_color <- brewer.pal(3,"Set2")[1:2]
 
 # Determines which site to process
 arrayid <- 73
@@ -67,22 +67,65 @@ delta_log10_psi_soil <- delta_TS(AMF_df,"log10_psi_soil")
 delta_ET <- delta_TS(AMF_df,"ET")
 # Calculate delta_VPD
 delta_VPD <- delta_TS(AMF_df,"VPD")
+# Calculate delta_TA
+delta_TA <- delta_TS(AMF_df,"TA")
 
 # Put them in a df
 df <- data.frame(
   Time = AMF_df$Time[2:nrow(AMF_df)],
   delta_log10_psi_soil,
   delta_VPD,
-  delta_ET)
+  delta_ET,
+  delta_TA)
 
 # Get diurnal anomaly
 df<- Cal_diurnal_anomaly(df,"delta_log10_psi_soil",5)
 df<- Cal_diurnal_anomaly(df,"delta_VPD",5)
 df<- Cal_diurnal_anomaly(df,"delta_ET",5)
+df <- Cal_diurnal_anomaly(df,"delta_TA",5)
+
+# Also add precipitation as the original data
+df$PPT <- AMF_df$P_F[2:nrow(AMF_df)]
+
+# Define growing season (GS)
+# Define GS as May to Sep, could be revised if needed
+df <- df %>%
+  mutate(
+    GS =  if_else(month(Time) %in% 5:9,"GS","Non-GS")
+  )
 
 # Step 2. Make TS and histogram plots of input variables ----------------------
-# Get TS plots and and distribution for psi, VPD and ET
-g_psi <- var_plots_all("delta_log10_psi_soil",bquote(Delta~psi),df,my_color,ZFlag = FALSE,nbins=n_bin)
+# Get TS plots and and distribution for ET, psi, VPD, TA, and P
+# Note: all the first four variables are diurnal anomaly of delta_TS, only P is the original daily P
+
+
+varname <- "delta_log10_psi_soil_anomaly"
+y_title <- bquote(Delta~psi)
+df <- df
+my_color <- season_color
+ZFlag <- FALSE
+nbins <- n_bin
+
+# This function plots all TS and histogram for the target variable
+# Including the full TS, annual cycle, diurnal cycle, and distribution, color coded by how GS is defined
+# varname: target variable name (the original name)
+# y_title: y title
+# df: The target df
+# my_color: a vector of three
+# ZFlag: whether zero-adjustment should be applied to this variable
+# nbins: # of bins for discretization
+var_plot_TS_Hist <- function(varname,y_title,df,my_color,ZFlag,nbins){
+  # Plot the full time series of the variable, color code by GS
+  g_full_TS <- TS_all(varname,df,y_title,my_color)
+  # Plot the annual cycle of the variable, color code by GS
+  g_annual_TS <- TS_annual(varname,df,y_title,my_color)
+  # Plot the diurnal cycle of the variable, color coded by GS
+  g_diurnal_TS <- TS_diurnal(varname,df,y_title,my_color)
+  # Get the distribution of data
+  var <- df[[varname]]
+  
+}
+
 
 
 
