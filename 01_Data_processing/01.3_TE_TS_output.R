@@ -40,15 +40,15 @@ progressr::with_progress({
   p <- progressor(along = 1:length(Site_ID_ls))
   
   future_lapply(1:length(Site_ID_ls),function(i){
-    Site_ID <- Site_ID_ls[i]
+    siteid <- Site_ID_ls[i]
     # Only keep data for this site
     Site_df <- AMF_df %>%
-      filter(Site_ID == Site_ID)
+      filter(Site_ID == siteid)
     # Calculate soil water potential based on soil moisture and soil texture at this site
     # Reference: Lowman et al., 2023
-    Site_df$psi_soil <- Cal_psisoil(Site_df,site_info,Site_ID)
+    Site_df$psi_soil <- Cal_psisoil(Site_df,site_info,siteid)
     # Output this df
-    write.csv(Site_df,paste0(AMF_path,"AMF_sites_hourly/AMF_hourly_",Site_ID,".csv"))
+    write.csv(Site_df,paste0(AMF_path,"AMF_sites_hourly/AMF_hourly_",siteid,".csv"))
     p()
   })
 })
