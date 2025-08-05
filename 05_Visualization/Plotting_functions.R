@@ -41,15 +41,15 @@ print_g <- function(g,title,w,h){
 # varname: the variable name in the df
 # df: the data frame
 # y_title: title of y axis
-# varcolor: color for GS and non-GS, should be a vector of 2
-TS_all <- function(varname,df,y_title,varcolor){
+# my_color: color for GS and non-GS, should be a vector of 2
+TS_all <- function(varname,df,y_title,my_color){
   g <- ggplot(data=df)+
-    #geom_line(color=varcolor)+
+    #geom_line(color=my_color)+
     geom_segment(aes(x=Time, xend = Time,y = 0,yend = .data[[varname]],
                      color = GS))+
     my_theme+
-    scale_color_manual(values = c("GS" = varcolor[1],
-                                  "Non-GS" = varcolor[2]))+
+    scale_color_manual(values = c("GS" = my_color[1],
+                                  "Non-GS" = my_color[2]))+
     labs(x="",y=y_title)
   return(g)
 }
@@ -113,8 +113,8 @@ TS_cycle <- function(df_cycle,cycle,y_title,var_to_plot){
 # Input includes:
 # varname: the variable name in the df
 # df: original df
-# varcolor: color for GS and non-GS, should be a vector of 2
-TS_annual <- function(varname,df,y_title,varcolor){
+# my_color: color for GS and non-GS, should be a vector of 2
+TS_annual <- function(varname,df,y_title,my_color){
   df_tmp <- df %>%
     mutate(DOY = yday(Time)) %>%
     # Calculate daily mean across the years
@@ -130,10 +130,10 @@ TS_annual <- function(varname,df,y_title,varcolor){
   g <- ggplot(df_tmp,aes(x=Time,y=mean,color=GS,group=group_id))+
     geom_ribbon(aes(ymin = mean - sd,ymax = mean + sd,fill=GS),color=NA,alpha=0.3)+
     geom_line(size=1)+
-    scale_color_manual(values = c("GS" = varcolor[1],
-                                  "Non-GS" = varcolor[2]))+
-    scale_fill_manual(values = c("GS" = varcolor[1],
-                                  "Non-GS" = varcolor[2]))+
+    scale_color_manual(values = c("GS" = my_color[1],
+                                  "Non-GS" = my_color[2]))+
+    scale_fill_manual(values = c("GS" = my_color[1],
+                                  "Non-GS" = my_color[2]))+
     my_theme+
     labs(x="",y=y_title,color="",fill="")+
     scale_x_date(date_breaks = "2 month",date_labels = "%b")+
@@ -147,8 +147,8 @@ TS_annual <- function(varname,df,y_title,varcolor){
 # Input includes:
 # varname: the variable name in the df
 # df: original df
-# varcolor: color for GS and non-GS, should be a vector of 2
-TS_diurnal <- function(varname,df,y_title,varcolor){
+# my_color: color for GS and non-GS, should be a vector of 2
+TS_diurnal <- function(varname,df,y_title,my_color){
   # For diurnal cycle
   df_tmp <- df %>%
     mutate(Hour = hour(Time)) %>%
@@ -161,10 +161,10 @@ TS_diurnal <- function(varname,df,y_title,varcolor){
   g <- ggplot(df_tmp,aes(x=Time,y=mean,color=GS,fill=GS))+
     geom_ribbon(aes(ymin = mean - sd,ymax = mean + sd),color=NA,alpha=0.3)+
     geom_line(size=1)+
-    scale_color_manual(values = c("GS" = varcolor[1],
-                                  "Non-GS" = varcolor[2]))+
-    scale_fill_manual(values = c("GS" = varcolor[1],
-                                 "Non-GS" = varcolor[2]))+
+    scale_color_manual(values = c("GS" = my_color[1],
+                                  "Non-GS" = my_color[2]))+
+    scale_fill_manual(values = c("GS" = my_color[1],
+                                 "Non-GS" = my_color[2]))+
     my_theme+
     labs(x="Hour of the day",y=y_title)
   return(g)
@@ -272,8 +272,8 @@ Hist_var_GS <- function(varname,df,ZFlag,nbins,gs){
 # df: the original df
 # ZFlag: whether zero adjustment is needed
 # nbins: # of bins for discretization
-# varcolor: color for GS and non-GS, should be a vector of 2
-Hist_GS_plot <- function(varname,df,x_title,ZFlag,nbins,varcolor){
+# my_color: color for GS and non-GS, should be a vector of 2
+Hist_GS_plot <- function(varname,df,x_title,ZFlag,nbins,my_color){
   # Get hist_df for GS and Non-GS
   hist_df_GS <- Hist_var_GS(varname,df,ZFlag,nbins,"GS")
   hist_df_NGS <- Hist_var_GS(varname,df,ZFlag,nbins,"Non-GS")
@@ -307,11 +307,12 @@ var_plot_TS_Hist <- function(varname,y_title,df,my_color,ZFlag,nbins){
   g_diurnal_TS <- TS_diurnal(varname,df,y_title,my_color)
   # Get the distribution of data
   g_Hist <- Hist_GS_plot(varname,df,x_title = y_title,ZFlag,nbins,my_color)
+  g_ls <- list(g_full_TS,g_annual_TS,g_diurnal_TS,g_Hist)
+  
   # Combine these four plots
-  g <- plot_grid(g_full_TS,g_annual_TS,g_diurnal_TS,g_Hist,
-                 align = "h",nrow=1,
-                 rel_widths = c(1.5,1,1,1))
-  return(g)
+  #              align = "h",nrow=1,
+   #              rel_widths = c(1.5,1,1,1))
+  return(g_ls)
 }
 
 # This function makes all TS and histogram plots for the target variable

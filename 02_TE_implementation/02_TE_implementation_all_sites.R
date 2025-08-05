@@ -1,13 +1,14 @@
 # Author: Zhaozhe Chen
-# Update date: 2025.8.4
+# Update date: 2025.8.5
 
 # This code is to run TE at hourly scale for all AMF sites
 # Calculate TE between variable pairs of:
 # Soil water potential, ET, and T
 # For both directions
+# Note: The variables are pre-processed to get diurnal anomaly of change in time series (delta_TS)
 
 # Output includes:
-# 
+# One figure of all target variables for each site
 
 # -------- Global ------------
 library(here)
@@ -21,7 +22,7 @@ AMF_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Data/02_AMF_cleaned/
 # Input path to AMF site info, which also includes soil info
 site_info <- read.csv(here("00_data","ameriflux_site_info_update.csv"))
 # Output path for the results
-Output_path <- here("02_TE_implementation","Results","Hourly_TE_all_sites")
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites/"
 
 # Parameters for TE implementation
 n_bin <- 11 # Number of bins for TE discritization of continuous data (e.g., SM)
@@ -36,9 +37,6 @@ set.seed(111)
 # Determines if zero should be adjusted for the Sink and Source variables
 ZFlagSink <- FALSE
 ZFlagSource <- FALSE
-
-# Whether to plot TS and histogram of the source and sink
-TS_Hist_plot <- TRUE
 
 # These are folding parameters to deal with extreme values (outliers) in the time series
 # i.e., extreme values will be binned into the first or last bin
@@ -79,13 +77,10 @@ df <- data.frame(
   delta_TA)
 
 # Get diurnal anomaly
-df<- Cal_diurnal_anomaly(df,"delta_log10_psi_soil",5)
-df<- Cal_diurnal_anomaly(df,"delta_VPD",5)
-df<- Cal_diurnal_anomaly(df,"delta_ET",5)
+df <- Cal_diurnal_anomaly(df,"delta_log10_psi_soil",5)
+df <- Cal_diurnal_anomaly(df,"delta_VPD",5)
+df <- Cal_diurnal_anomaly(df,"delta_ET",5)
 df <- Cal_diurnal_anomaly(df,"delta_TA",5)
-
-# Also add precipitation as the original data
-df$PPT <- AMF_df$P_F[2:nrow(AMF_df)]
 
 # Define growing season (GS)
 # Define GS as May to Sep, could be revised if needed
@@ -95,12 +90,33 @@ df <- df %>%
   )
 
 # Step 2. Make TS and histogram plots of input variables ----------------------
-# Get TS plots and and distribution for ET, psi, VPD, TA, and P
-# Note: all the first four variables are diurnal anomaly of delta_TS, only P is the original daily P
-g_psi <- var_plot_TS_Hist("delta_log10_psi_soil_anomaly",y_title = bquote(Delta~psi),
+# Get TS plots and and distribution for ET, psi, VPD, TA
+# Note: all the first four variables are diurnal anomaly of delta_TS
+g_ET <- var_plot_TS_Hist("delta_ET_anomaly",y_title = bquote(Delta~ET~"(mmday-1)"),
+                         df,my_color = season_color,ZFlag = FALSE,nbins=n_bin)
+
+g_psi <- var_plot_TS_Hist("delta_log10_psi_soil_anomaly",y_title = bquote(Delta~psi~"(Jkg-1 log scale)"),
                           df,my_color = season_color,ZFlag = FALSE,nbins=n_bin)
 
-# Add Site ID to the top of the 
+g_VPD <- var_plot_TS_Hist("delta_VPD_anomaly",y_title = bquote(Delta~VPD~"(hPa)"),
+                          df,my_color = season_color,ZFlag = FALSE,nbins=n_bin)
+
+g_TA <- var_plot_TS_Hist("delta_TA_anomaly",y_title = bquote(Delta~T~"("~degree~C~")"),
+                          df,my_color = season_color,ZFlag = FALSE,nbins=n_bin)
+
+# Combine all plots
+g_var_all <- plot_grid(plotlist = c(g_ET,g_psi,g_VPD,g_TA),
+                       ncol=4,align="hv",
+                       axis="tblr",rel_widths = c(1.5,1,1,1))
+
+# Add Site ID to the top of the plot
+g_title <- ggdraw() + draw_label(Site_ID,fontface = "bold",size=20)
+g_var_all <- plot_grid(g_title,g_var_all,
+                       ncol=1,
+                       rel_heights = c(0.1,2))
+# Output this figure, one for each site
+print_g(g_var_all,paste0("/Var_plots/Var_plots_",Site_ID),18,14)
+
 
 
 
