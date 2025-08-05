@@ -1,14 +1,19 @@
 # Author: Zhaozhe Chen
 # Update date: 2025.8.5
 
-# This code is to run TE at hourly scale for all AMF sites
+# This code is to run TE at hourly scale for all AMF sites, across different time periods
+# Including full TS, GS during full TS, Non-GS during full TS, full TS across years, GS across years, and Non-GS across years
 # Calculate TE between variable pairs of:
 # Soil water potential, ET, and T
 # For both directions
 # Note: The variables are pre-processed to get diurnal anomaly of change in time series (delta_TS)
 
 # Output includes:
-# One figure of all target variables for each site
+# One figure of all target variables for each site, to Output/Var_plots
+# One figure of Lag plots for each of full TS, GS during full TS, and non-GS during full TS, to Output/Lag_plots
+# One TE_df_ls for each of above, to Output/TE_df
+# One figure of normalized TE vs lag for each of above across years, to Output/Lag_plots
+# One TE_df_ls for each of above across years, to Output/TE_df
 
 # -------- Global ------------
 library(here)
@@ -130,6 +135,8 @@ var_comb <- expand.grid(from = var_ls,
                         to = var_ls) %>%
   filter(from != to)
 
+# Timing the TE calculation
+start_time <- Sys.time()
 # For all data in full TS =============
 TE_results <- TE_all_var_pairs(var_comb,df,
                                Maxlag = max_lag,nbins = n_bin,alpha = alpha,nshuffle = nshuffle,
@@ -183,14 +190,61 @@ print_g(TE_g_NGS,paste0("/Lag_plots/Lag_plots_NGS_",Site_ID),
 message("Complete full TS Non-GS")
 
 # For all data across years ===========
+TE_results_years <- TE_all_var_pairs_year(var_comb,df,
+                                     Maxlag = max_lag,nbins = n_bin,alpha = alpha,nshuffle = nshuffle,
+                                     ZFlagSource = ZFlagSource,ZFlagSink = ZFlagSink,Lag_Dependent_Crit = Lag_Dependent_Crit)
+TE_df_ls_years <- TE_results_years[[1]]
+TE_g_ls_years <- TE_results_years[[2]]
+# Output these
+saveRDS(TE_df_ls_years,paste0(Output_path,"TE_df/TE_df_ls_full_TS_years_",Site_ID,".rds"))
+# Combine all plots
+TE_g_years <- plot_grid(plotlist = TE_g_ls_years,ncol=6,
+                        align="hv")
+# Calculate height of the figure
+g_h <- 4*length(TE_g_ls_years)/6
+print_g(TE_g_years,paste0("/Lag_plots/Lag_plots_full_TS_years_",Site_ID),
+        18,g_h)
+message("Complete full TS across years")
+
+# For GS across years =================
+TE_results_GS_years <- TE_all_var_pairs_year(var_comb,df_GS,
+                                          Maxlag = max_lag,nbins = n_bin,alpha = alpha,nshuffle = nshuffle,
+                                          ZFlagSource = ZFlagSource,ZFlagSink = ZFlagSink,Lag_Dependent_Crit = Lag_Dependent_Crit)
+TE_df_ls_GS_years <- TE_results_GS_years[[1]]
+TE_g_ls_GS_years <- TE_results_GS_years[[2]]
+# Output these
+saveRDS(TE_df_ls_GS_years,paste0(Output_path,"TE_df/TE_df_ls_GS_years_",Site_ID,".rds"))
+# Combine all plots
+TE_g_GS_years <- plot_grid(plotlist = TE_g_ls_GS_years,ncol=6,
+                        align="hv")
+# Calculate height of the figure
+g_h <- 4*length(TE_g_ls_GS_years)/6
+print_g(TE_g_GS_years,paste0("/Lag_plots/Lag_plots_GS_years_",Site_ID),
+        18,g_h)
+message("Complete GS across years")
+
+# For Non-GS across years ==============
+TE_results_NGS_years <- TE_all_var_pairs_year(var_comb,df_NGS,
+                                             Maxlag = max_lag,nbins = n_bin,alpha = alpha,nshuffle = nshuffle,
+                                             ZFlagSource = ZFlagSource,ZFlagSink = ZFlagSink,Lag_Dependent_Crit = Lag_Dependent_Crit)
+TE_df_ls_NGS_years <- TE_results_NGS_years[[1]]
+TE_g_ls_NGS_years <- TE_results_NGS_years[[2]]
+# Output these
+saveRDS(TE_df_ls_NGS_years,paste0(Output_path,"TE_df/TE_df_ls_NGS_years_",Site_ID,".rds"))
+# Combine all plots
+TE_g_NGS_years <- plot_grid(plotlist = TE_g_ls_NGS_years,ncol=6,
+                           align="hv")
+# Calculate height of the figure
+g_h <- 4*length(TE_g_ls_NGS_years)/6
+print_g(TE_g_NGS_years,paste0("/Lag_plots/Lag_plots_NGS_years_",Site_ID),
+        18,g_h)
+message("Complete Non-GS across years")
 
 
-
-
-# For GS across years
-
-# For Non-GS across years
-
+end_time <- Sys.time()
+run_time <- as.character(end_time - start_time)
+message(run_time)
+message("All done!!!")
 
 
 

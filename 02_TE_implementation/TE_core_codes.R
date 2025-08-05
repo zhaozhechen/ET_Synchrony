@@ -522,7 +522,7 @@ TE_all_var_pairs_year <- function(var_comb,df_processed,
         # Store this plot
         TE_g_ls <- append(TE_g_ls,list(TE_g))
       }
-      message(paste("Complete Year",year_tmp))
+      #message(paste("Complete Year",year_tmp))
     }
     message(paste("Complete",i,"out of",nrow(var_comb)))
   }
