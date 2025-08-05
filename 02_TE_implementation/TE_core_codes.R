@@ -412,3 +412,53 @@ TE_quantile <- function(Source,Sink,Maxlag,nbins,alpha,nshuffle,ZFlagSource,ZFla
   write.csv(run_time_df,paste0(Output_path,"/runtime_",title,".csv"))
   return(TE_df_ls)
 }
+
+# This function calculates TE for all variable pairs in the input variable combination
+# Input includes:
+# var_comb: the combination of all variable pairs
+# df_processed: the data frame after processing (e.g., keeping only GS or non-GS)
+TE_all_var_pairs <- function(var_comb,df_processed,
+                             Maxlag,nbins,alpha,nshuffle,ZFlagSource,ZFlagSink,Lag_Dependent_Crit){
+  # Initialize a list to store all TE_df output for all variable pairs
+  TE_df_ls <- list()
+  # Initialize a list to store all lag plots
+  TE_g_ls <- list()
+  for(i in 1:nrow(var_comb)){
+    # Get the varname of the source and sink
+    varname_source <- as.character(var_comb[i,1])
+    varname_sink <- as.character(var_comb[i,2])
+    # Get the Source and Sink values
+    var_source <- df_processed[[varname_source]]
+    var_sink <- df_processed[[varname_sink]]
+    # Get the simplified titles for the source and sink
+    var_source_title <- vartitle_ls[var_ls == varname_source]
+    var_sink_title <- vartitle_ls[var_ls == varname_sink]
+    # Calculate TE from the source to the sink
+    TE_df <- Cal_TE_MI_main(Source = var_source,
+                            Sink = var_sink,
+                            nbins = nbins,
+                            Maxlag = Maxlag,
+                            alpha = alpha,
+                            nshuffle = nshuffle,
+                            upper_qt = upper_qt,
+                            lower_qt = lower_qt,
+                            ZFlagSource = ZFlagSource,
+                            ZFlagSink = ZFlagSink,
+                            Lag_Dependent_Crit = Lag_Dependent_Crit)
+    
+    # Store this TE_df
+    TE_df_ls[[paste0(var_source_title,"_to_",var_sink_title)]] <- TE_df
+    
+    # Make a lag plot for this TE_df
+    # title for the plot
+    TE_g_title <- bquote(Delta~.(as.name(var_source_title))~"\u2192"~Delta~.(as.name(var_sink_title)))
+    TE_g <- lag_plots_all(TE_df,TE_g_title)
+    # Store this plot
+    TE_g_ls[[i]] <- TE_g
+    message(paste("Complete",i,"out of",nrow(var_comb)))
+  }
+  # Combine all TE_g plots
+  TE_g_all <- plot_grid(plotlist = TE_g_ls,ncol=1,
+                        align = "hv")
+  return(list(TE_df_ls,TE_g_all))
+}

@@ -433,19 +433,24 @@ TE_lag_plot <- function(TE_df,Type,my_color){
     labs(x = "Lag (hours)",y=y_title,color="")
   # Get the peak and corresponding lag
   if(Type == "TE"|Type == "MI"|Type == "TEnorm"){
+    # This should be the maximum value in significant values
+    TE_df[[varname]][TE_df[[varname]] < TE_df[[varname_crit]]] <- NA
     best_lag <- TE_df$Lag[which.max(TE_df[[varname]])]
-    # Add this best lag to the plot, and annotate it
-    g <- g +
-      geom_vline(xintercept = best_lag,
-                 color=my_color[2],
-                 linewidth = 0.8)+
-      annotate("text",
-               x=best_lag,
-               y=max(TE_df[[varname]]*1.05,na.rm=TRUE),
-               label = paste0("Best Lag = ",best_lag),
-               size=5,
-               hjust = -0.2,
-               color=my_color[2])
+    # if not all values not significant
+    if(length(best_lag) != 0){
+      # Add this best lag to the plot, and annotate it
+      g <- g +
+        geom_vline(xintercept = best_lag,
+                   color=my_color[2],
+                   linewidth = 0.8)+
+        annotate("text",
+                 x=best_lag,
+                 y=max(TE_df[[varname]]*1.05,na.rm=TRUE),
+                 label = paste0("Best Lag = ",best_lag),
+                 size=5,
+                 hjust = -0.2,
+                 color=my_color[2])      
+    }
   }
   return(g)
 }

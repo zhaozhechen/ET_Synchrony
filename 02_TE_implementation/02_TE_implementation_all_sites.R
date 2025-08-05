@@ -27,7 +27,7 @@ Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE
 # Parameters for TE implementation
 n_bin <- 11 # Number of bins for TE discritization of continuous data (e.g., SM)
 max_lag <- 72 # Maximum lag to consider (This should be adjusted according to the processes and the temporal resolution of data)
-Lag_Dependent_Crit <- TRUE # Determine if critical TE is lag-dependent
+Lag_Dependent_Crit <- FALSE # Determine if critical TE is lag-dependent
 nshuffle <- 300 # Number of shuffles (bootstrap) for critical TE for statistical inference
 alpha <- 0.05 # Confidence level for critical TE
 # Set parallel session
@@ -45,6 +45,13 @@ upper_qt <- 1-lower_qt
 
 # 2 colors for growing season and non-growing season
 season_color <- brewer.pal(3,"Set2")[1:2]
+# 3 colors for Lag plots
+my_color <- brewer.pal(3,"Set2")
+
+# All variable pairs to consider
+var_ls <- c("delta_ET_anomaly","delta_log10_psi_soil_anomaly","delta_VPD_anomaly","delta_TA_anomaly")
+# Their names for simplicity
+vartitle_ls <- c("ET","psi","VPD","TA")
 
 # Determines which site to process
 arrayid <- 73
@@ -116,6 +123,30 @@ g_var_all <- plot_grid(g_title,g_var_all,
                        rel_heights = c(0.1,2))
 # Output this figure, one for each site
 print_g(g_var_all,paste0("/Var_plots/Var_plots_",Site_ID),18,14)
+
+# Step 3. Run hourly TE between each pair of variables -----------------------------
+# Get all combinations of variable pairs, order matters
+var_comb <- expand.grid(from = var_ls,
+                        to = var_ls) %>%
+  filter(from != to)
+
+# For all data in full TS
+TE_results <- TE_all_var_pairs(var_comb,df,
+                               Maxlag = max_lag,nbins = n_bin,alpha = alpha,nshuffle = nshuffle,
+                               ZFlagSource = ZFlagSource,ZFlagSink = ZFlagSink,Lag_Dependent_Crit = Lag_Dependent_Crit)
+
+
+# For GS in full TS
+
+# For Non-GS in full TS
+
+# For all data across years
+
+# For GS across years
+
+# For Non-GS across years
+
+
 
 
 
