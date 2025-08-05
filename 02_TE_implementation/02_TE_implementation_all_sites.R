@@ -182,12 +182,14 @@ print_g(TE_g_NGS,paste0("/Lag_plots/Lag_plots_NGS_",Site_ID),
         18,40)
 message("Complete full TS Non-GS")
 
-# For all data across years
+# For all data across years ===========
+
+
+
 
 # For GS across years
 
 # For Non-GS across years
-
 
 
 
