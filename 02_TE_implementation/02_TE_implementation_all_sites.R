@@ -130,15 +130,57 @@ var_comb <- expand.grid(from = var_ls,
                         to = var_ls) %>%
   filter(from != to)
 
-# For all data in full TS
+# For all data in full TS =============
 TE_results <- TE_all_var_pairs(var_comb,df,
                                Maxlag = max_lag,nbins = n_bin,alpha = alpha,nshuffle = nshuffle,
                                ZFlagSource = ZFlagSource,ZFlagSink = ZFlagSink,Lag_Dependent_Crit = Lag_Dependent_Crit)
+TE_df_ls <- TE_results[[1]]
+TE_g <- TE_results[[2]]
+# Output these
+saveRDS(TE_df_ls,paste0(Output_path,"TE_df/TE_df_ls_full_TS_",Site_ID,".rds"))
+print_g(TE_g,paste0("/Lag_plots/Lag_plots_full_TS_",Site_ID),
+        18,40)
+message("Complete full TS")
 
+# For GS in full TS =============
+# Process df and assign NA to non-GS values
+# Note: should not remove them, to keep temporal dependence
+df_GS <- df %>%
+  mutate(across(
+    starts_with("delta_"),
+    ~if_else(GS=="GS", ., NA)
+  ))
 
-# For GS in full TS
+TE_results_GS <- TE_all_var_pairs(var_comb,df_GS,
+                               Maxlag = max_lag,nbins = n_bin,alpha = alpha,nshuffle = nshuffle,
+                               ZFlagSource = ZFlagSource,ZFlagSink = ZFlagSink,Lag_Dependent_Crit = Lag_Dependent_Crit)
+TE_df_ls_GS <- TE_results_GS[[1]]
+TE_g_GS <- TE_results_GS[[2]]
+# Output these
+saveRDS(TE_df_ls_GS,paste0(Output_path,"TE_df/TE_df_ls_GS_",Site_ID,".rds"))
+print_g(TE_g_GS,paste0("/Lag_plots/Lag_plots_GS_",Site_ID),
+        18,40)
+message("Complete full TS GS")
 
-# For Non-GS in full TS
+# For Non-GS in full TS =============
+# Process df and assign NA to GS values
+# Note: should not remove them, to keep temporal dependence
+df_NGS <- df %>%
+  mutate(across(
+    starts_with("delta_"),
+    ~if_else(GS=="Non-GS", ., NA)
+  ))
+
+TE_results_NGS <- TE_all_var_pairs(var_comb,df_NGS,
+                                  Maxlag = max_lag,nbins = n_bin,alpha = alpha,nshuffle = nshuffle,
+                                  ZFlagSource = ZFlagSource,ZFlagSink = ZFlagSink,Lag_Dependent_Crit = Lag_Dependent_Crit)
+TE_df_ls_NGS <- TE_results_NGS[[1]]
+TE_g_NGS <- TE_results_NGS[[2]]
+# Output these
+saveRDS(TE_df_ls_NGS,paste0(Output_path,"TE_df/TE_df_ls_NGS_",Site_ID,".rds"))
+print_g(TE_g_NGS,paste0("/Lag_plots/Lag_plots_NGS_",Site_ID),
+        18,40)
+message("Complete full TS Non-GS")
 
 # For all data across years
 
