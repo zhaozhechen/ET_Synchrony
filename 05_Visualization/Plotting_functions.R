@@ -109,7 +109,6 @@ TS_cycle <- function(df_cycle,cycle,y_title,var_to_plot){
   return(g)
 }
 
-
 # This function plots the annual cycle of the target variable, color coded by GS
 # Input includes:
 # varname: the variable name in the df
@@ -136,8 +135,11 @@ TS_annual <- function(varname,df,y_title,varcolor){
     scale_fill_manual(values = c("GS" = varcolor[1],
                                   "Non-GS" = varcolor[2]))+
     my_theme+
-    labs(x="",y=y_title)+
-    scale_x_date(date_breaks = "2 month",date_labels = "%b")
+    labs(x="",y=y_title,color="",fill="")+
+    scale_x_date(date_breaks = "2 month",date_labels = "%b")+
+    theme(legend.position = c(0.5,0.9),
+          legend.background = element_blank(),
+          legend.direction = "horizontal")
   return(g)
 }
 
@@ -167,7 +169,6 @@ TS_diurnal <- function(varname,df,y_title,varcolor){
     labs(x="Hour of the day",y=y_title)
   return(g)
 }
-
 
 # This function is to get the distribution of the input variable
 # Following the same processing method as for TE implementation, so the distribution is the same as that for TE input
@@ -264,15 +265,54 @@ Hist_var_GS <- function(varname,df,ZFlag,nbins,gs){
   return(hist_df)
 }
 
+# This function makes Histogram plots for the target variable
+# Following the same processing method as for TE implementation, so the distribution is the same as that for TE input
+# Input includes:
+# varname: the variable name
+# df: the original df
+# ZFlag: whether zero adjustment is needed
+# nbins: # of bins for discretization
+# varcolor: color for GS and non-GS, should be a vector of 2
+Hist_GS_plot <- function(varname,df,x_title,ZFlag,nbins,varcolor){
+  # Get hist_df for GS and Non-GS
+  hist_df_GS <- Hist_var_GS(varname,df,ZFlag,nbins,"GS")
+  hist_df_NGS <- Hist_var_GS(varname,df,ZFlag,nbins,"Non-GS")
 
-Hist_GS_plot <- function(){
-  
-  
-  
-  
-  
+  g <- ggplot()+
+    geom_col(data=hist_df_GS,
+             aes(x=bin_center,y=count),
+             width=hist_df_GS$bin_width,color="black",fill=my_color[1],alpha=0.4)+
+    geom_col(data=hist_df_NGS,
+             aes(x=bin_center,y=count),
+             width=hist_df_NGS$bin_width,color="black",fill=my_color[2],alpha=0.4)+
+    my_theme+
+    labs(x = x_title,y="count")
+  return(g)
 }
 
+# This function plots all TS and histogram for the target variable
+# Including the full TS, annual cycle, diurnal cycle, and distribution, color coded by how GS is defined
+# varname: target variable name (the original name)
+# y_title: y title
+# df: The target df
+# my_color: a vector of three
+# ZFlag: whether zero-adjustment should be applied to this variable
+# nbins: # of bins for discretization
+var_plot_TS_Hist <- function(varname,y_title,df,my_color,ZFlag,nbins){
+  # Plot the full time series of the variable, color code by GS
+  g_full_TS <- TS_all(varname,df,y_title,my_color)
+  # Plot the annual cycle of the variable, color code by GS
+  g_annual_TS <- TS_annual(varname,df,y_title,my_color)
+  # Plot the diurnal cycle of the variable, color coded by GS
+  g_diurnal_TS <- TS_diurnal(varname,df,y_title,my_color)
+  # Get the distribution of data
+  g_Hist <- Hist_GS_plot(varname,df,x_title = y_title,ZFlag,nbins,my_color)
+  # Combine these four plots
+  g <- plot_grid(g_full_TS,g_annual_TS,g_diurnal_TS,g_Hist,
+                 align = "h",nrow=1,
+                 rel_widths = c(1.5,1,1,1))
+  return(g)
+}
 
 # This function makes all TS and histogram plots for the target variable
 # Including the plots of original var, moving diurnal mean, and moving diurnal anomaly

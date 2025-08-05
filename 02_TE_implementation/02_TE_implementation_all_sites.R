@@ -97,42 +97,10 @@ df <- df %>%
 # Step 2. Make TS and histogram plots of input variables ----------------------
 # Get TS plots and and distribution for ET, psi, VPD, TA, and P
 # Note: all the first four variables are diurnal anomaly of delta_TS, only P is the original daily P
+g_psi <- var_plot_TS_Hist("delta_log10_psi_soil_anomaly",y_title = bquote(Delta~psi),
+                          df,my_color = season_color,ZFlag = FALSE,nbins=n_bin)
 
-
-varname <- "delta_log10_psi_soil_anomaly"
-y_title <- bquote(Delta~psi)
-df <- df
-my_color <- season_color
-ZFlag <- FALSE
-nbins <- n_bin
-
-# This function plots all TS and histogram for the target variable
-# Including the full TS, annual cycle, diurnal cycle, and distribution, color coded by how GS is defined
-# varname: target variable name (the original name)
-# y_title: y title
-# df: The target df
-# my_color: a vector of three
-# ZFlag: whether zero-adjustment should be applied to this variable
-# nbins: # of bins for discretization
-var_plot_TS_Hist <- function(varname,y_title,df,my_color,ZFlag,nbins){
-  # Plot the full time series of the variable, color code by GS
-  g_full_TS <- TS_all(varname,df,y_title,my_color)
-  # Plot the annual cycle of the variable, color code by GS
-  g_annual_TS <- TS_annual(varname,df,y_title,my_color)
-  # Plot the diurnal cycle of the variable, color coded by GS
-  g_diurnal_TS <- TS_diurnal(varname,df,y_title,my_color)
-  # Get the distribution of data
-  var <- df[[varname]]
-  
-}
-
-
-
-
-
-test <- read.csv("D:/OneDrive - UW-Madison/Research/ET Synchrony/Github repo/ET_Synchrony/00_Data/Data_processed/AMF_hourly_US-Ne1.csv")
-
-
+# Add Site ID to the top of the 
 
 
 
