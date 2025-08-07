@@ -60,7 +60,7 @@ vartitle_ls <- c("ET","psi","VPD","TA")
 
 # Determines which site to process
 # Test sites US-Ne1 (73), US-Wkg (148), US-Var (134), and US-Ton (122) for now
-arrayid_ls <- c(73,148,134,122)
+arrayid_ls <- c(122)
 
 # -------- Main ----------
 for(arrayid in arrayid_ls){
@@ -252,7 +252,7 @@ for(arrayid in arrayid_ls){
   
   end_time <- Sys.time()
   run_time <- as.character(end_time - start_time)
-  run_time <- paste(site_ID,run_time)
+  run_time <- paste(Site_ID,run_time)
   message(run_time)
   writeLines(run_time,paste0(Output_path,"Run_time_",Site_ID,".txt"))
   message(paste("All done!!!", Site_ID))
