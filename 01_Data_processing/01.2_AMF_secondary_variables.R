@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Update date: 2025.7.7
+# Update date: 2025.8.11
 
 # This code matches soil properties to AMF sites
 # This code is done, no need to rerun, unless need to match a few sites with missing values
