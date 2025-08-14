@@ -151,11 +151,13 @@ for(i in 1:nrow(site_info)){
 
 site_info$SOS <- SOS_ls
 site_info$EOS <- EOS_ls
+# Add Length of growing season (LGS)
+site_info$LGS <- as.numeric(as.Date(site_info$EOS) - as.Date(site_info$SOS))
 # Output this updated site_info
 write.csv(site_info,"00_Data/ameriflux_site_info_update_GS.csv")
 
-# Check the distribution of Length of growing season (LGS)
-LGS <- as.numeric(as.Date(site_info$EOS) - as.Date(site_info$SOS))
+
+
 
 
 
