@@ -1,8 +1,8 @@
 # Author: Zhaozhe Chen
-# Update date: 2025.8.11
+# Update date: 2025.8.15
 
 # This code matches soil properties to AMF sites
-# This code is done, no need to rerun, unless need to match a few sites with missing values
+# Sites of Wetland or Water are filtered out
 
 # ---------- Global ---------------
 library(here)
@@ -23,6 +23,10 @@ source(here("01_Data_processing","AMF_processing_functions.R"))
 # Note: only took the first layer
 texture <- extract_nc(Soil_path,"Texture")
 
+# Filter out sites being Wetland or Water
+site_info <- site_info %>%
+  filter(!IGBP_veg %in% c("WAT","WET"))
+
 # Loop over all sites and get the soil texture for each site
 # Initialize a vector to store soil texture for all sites
 texture_all <- c()
@@ -41,6 +45,6 @@ for(i in 1:nrow(site_info)){
 }
 site_info$soil_texture <- texture_all
 # Match corresponding soil hydraulic traits with the sites
-site_info_update <- site_info %>%
-  left_join(Soil_lookup,by=c("soil_texture" = "Class.code"))
-write.csv(site_info_update,here("00_Data","ameriflux_site_info_update.csv"))
+#site_info_update <- site_info %>%
+#  left_join(Soil_lookup,by=c("soil_texture" = "Class.code"))
+#write.csv(site_info_update,here("00_Data","ameriflux_site_info_update.csv"))
