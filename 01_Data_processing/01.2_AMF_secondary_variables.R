@@ -45,6 +45,6 @@ for(i in 1:nrow(site_info)){
 }
 site_info$soil_texture <- texture_all
 # Match corresponding soil hydraulic traits with the sites
-#site_info_update <- site_info %>%
-#  left_join(Soil_lookup,by=c("soil_texture" = "Class.code"))
+site_info_update <- site_info %>%
+  left_join(Soil_lookup,by=c("soil_texture" = "Class.code"))
 #write.csv(site_info_update,here("00_Data","ameriflux_site_info_update.csv"))

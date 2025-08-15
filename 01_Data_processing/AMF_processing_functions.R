@@ -120,8 +120,8 @@ get_nearest_value <- function(site_lat,site_lon,grid_value,grid_lat,grid_lon,max
   lon_idx <- which.min(abs(site_lon - grid_lon))
   # Get the value from that cell
   value <- grid_value[lat_idx,lon_idx]
-  # Check if this value is NA or 14:17 (because 14:17 have no corresponding soil hydrualic traits)
-  if(!is.na(value) && !value %in% c(0,14:17)){
+  # Check if this value is NA or 13:16 (because they have no corresponding soil hydraulic traits)
+  if(!is.na(value) && !value %in% c(0,13:16)){
     return(value)
   }else{
     # If the center cell is 0, search for nearby cells
@@ -132,7 +132,7 @@ get_nearest_value <- function(site_lat,site_lon,grid_value,grid_lat,grid_lon,max
      for(i in lat_range){
        for(j in lon_range){
          val <- grid_value[i,j]
-         if(!is.na(val) && val !=0){
+         if(!is.na(val) && !val %in% c(0,13:16)){
            return(val)
          }
        }
