@@ -502,10 +502,10 @@ plot_LAI_TS <- function(GS_df,LAI_df,my_color){
     )
   
   # Make df for plotting LAI50
-  LAI50_df <- GS_df %>%
-    mutate(xmin = as.Date(paste0(Year,"-01-01")),
-           xmax = as.Date(paste0(Year,"-12-31")),
-           y=LAI50)
+  #LAI50_df <- GS_df %>%
+  #  mutate(xmin = as.Date(paste0(Year,"-01-01")),
+  #         xmax = as.Date(paste0(Year,"-12-31")),
+  #         y=LAI50)
   
   #Make plots
   g <- ggplot(data=LAI_df,aes(x = Date))+
@@ -513,9 +513,9 @@ plot_LAI_TS <- function(GS_df,LAI_df,my_color){
               fill = my_color[1],inherit.aes = FALSE,alpha=0.3)+
     geom_line(aes(y=LAI_filled,color="Raw"),size=1)+
     geom_line(aes(y=LAI_smoothed,color="Smoothed"),size=1)+
-    geom_segment(data=LAI50_df,aes(x=xmin,xend=xmax,y=y,yend=y,linetype = "LAI50"),
-                 inherit.aes = FALSE)+
-    scale_linetype_manual(name = "",values = c("LAI50" = "dashed"))+
+    #geom_segment(data=LAI50_df,aes(x=xmin,xend=xmax,y=y,yend=y,linetype = "LAI50"),
+    #             inherit.aes = FALSE)+
+    #scale_linetype_manual(name = "",values = c("LAI50" = "dashed"))+
     my_theme+
     scale_color_manual(values = my_color[c(3,2)],
                        labels = c("Raw","Smoothed"))+

@@ -29,8 +29,9 @@ windowsize <- 13
 degree_p <- 4
 # Colors for plotting
 my_color <- brewer.pal(3,"Set2")
-# LAI cutoff
-LAI_th <- 0.5
+# LAI cutoff, using different thresholds for SOS and EOS
+LAI_SOS_th <- 0.3
+LAI_EOS_th <- 0.4
 
 # --------- Main ---------
 
@@ -76,11 +77,13 @@ for(i in 1:nrow(site_info)){
     # And get SOS and EOS
     GS_df <- LAI_df %>%
       group_by(Year) %>%
-      mutate(LAI50 = LAI_th*(max(LAI_smoothed,na.rm=TRUE)+min(LAI_smoothed,na.rm=TRUE))) %>%
+      mutate(LAI_SOS = min(LAI_smoothed,na.rm=TRUE) + LAI_SOS_th*(max(LAI_smoothed,na.rm=TRUE)-min(LAI_smoothed,na.rm=TRUE)),
+             LAI_EOS = min(LAI_smoothed,na.rm=TRUE) + LAI_EOS_th*(max(LAI_smoothed,na.rm=TRUE)-min(LAI_smoothed,na.rm=TRUE))) %>%
       summarise(
-        LAI50 = first(LAI50),
-        SOS = Date[which(LAI_smoothed > LAI50)[1]],
-        EOS = Date[rev(which(LAI_smoothed > LAI50))[1]]) %>%
+        LAI_SOS = first(LAI_SOS),
+        LAI_EOS = first(LAI_EOS),
+        SOS = Date[which(LAI_smoothed > LAI_SOS)[1]],
+        EOS = Date[rev(which(LAI_smoothed > LAI_EOS))[1]]) %>%
       ungroup()
     GS_df <- na.omit(GS_df)
     # Make LAI TS plot
@@ -117,11 +120,13 @@ for(i in 1:nrow(site_info)){
     # And get SOS and EOS
     GS_annual_df <- LAI_annual_df %>%
       group_by(Year) %>%
-      mutate(LAI50 = LAI_th*(max(LAI_smoothed,na.rm=TRUE)+min(LAI_smoothed,na.rm=TRUE))) %>%
+      mutate(LAI_SOS = min(LAI_smoothed,na.rm=TRUE) + LAI_SOS_th*(max(LAI_smoothed,na.rm=TRUE)-min(LAI_smoothed,na.rm=TRUE)),
+             LAI_EOS = min(LAI_smoothed,na.rm=TRUE) + LAI_EOS_th*(max(LAI_smoothed,na.rm=TRUE)-min(LAI_smoothed,na.rm=TRUE))) %>%
       summarise(
-        LAI50 = first(LAI50),
-        SOS = Date[which(LAI_smoothed > LAI50)[1]],
-        EOS = Date[rev(which(LAI_smoothed > LAI50))[1]]) %>%
+        LAI_SOS = first(LAI_SOS),
+        LAI_EOS = first(LAI_EOS),
+        SOS = Date[which(LAI_smoothed > LAI_SOS)[1]],
+        EOS = Date[rev(which(LAI_smoothed > LAI_EOS))[1]]) %>%
       ungroup()
     GS_annual_df <- na.omit(GS_annual_df)
     # Make LAI TS plot
