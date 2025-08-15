@@ -19,9 +19,12 @@ LAI_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Data/AMF_LAI/MCD15A3
 # Input path to AMF site info
 site_info <- read.csv(here("00_data","ameriflux_site_info_update.csv")) %>% select(-X)
 # Output path for figures
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites/LAI_plots/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites/LAI_plots_1yearup/"
 # Import plotting functions
 source(here("05_Visualization/Plotting_functions.R"))
+# Import data processing functions
+source(here("01_Data_processing/AMF_processing_functions.R"))
+
 # parameters to use in the SG filter
 # window size
 windowsize <- 13
@@ -58,11 +61,11 @@ for(i in 1:nrow(site_info)){
       DOY = yday(Date)
     ) 
   
-  # If no available LAI
-  if(sum(LAI_df$Lai,na.rm=TRUE)==0){
+  # If no available LAI or if LAI length is less than 1 year
+  if(sum(LAI_df$Lai,na.rm=TRUE)==0 | length(LAI_df$Lai) < 365/4){
     SOS <- NA
     EOS <- NA
-    message(Site_ID," has all 0 LAI")
+    message(Site_ID," has no sufficient LAI")
   }else{
     # LAI across years =======================
     # Gap fill and Smooth LAI
@@ -156,10 +159,67 @@ for(i in 1:nrow(site_info)){
 
 site_info$SOS <- SOS_ls
 site_info$EOS <- EOS_ls
+
+# Manually add SOS, EOS for sites having no sufficient LAI data =========================
+
+# US-CS5. Central Sands (WI). Use the mean of US-CS1, US-CS2, US-CS3, and US-CS4
+site_info <- replace_dates(site_info,"US-CS5",
+                           c("US-CS1","US-CS2","US-CS3","US-CS4"))
+
+# US-HB1. Next to US-HB2 and US-HB3 (SC)
+site_info <- replace_dates(site_info,"US-HB1",
+                           c("US-HB2","US-HB3"))
+
+# US-KS3, Next to US-KS1 and US-KS2 (FL)
+site_info <- replace_dates(site_info,"US-KS3",
+                           c("US-KS1","US-KS2"))
+
+# US-ORv, Olentangy River Wetland Research Park (OH), use sites near Lake Erie in OH
+site_info <- replace_dates(site_info,"US-ORv",
+                           c("US-Oho","US-CRT","US-OWC"))
+
+# US-Pnp, Picnic Point Site (WI), use the site at US-DFC
+site_info <- replace_dates(site_info,"Pnp",
+                           c("US-DFC"))
+
+# US-Snf, UC-Berkeley (CA), next to Sne, Myb, and Dmg
+site_info <- replace_dates(site_info,"US-Snf",
+                           c("US-Oho","US-CRT","US-OWC"))
+
+
+# US-UM3
+
+#US-UTB
+
+# US-Wi0
+
+# US-Wi5
+
+# US-Wi7
+
+# US-Wi8
+
+
+
+# US-WPT, Winous Point North Marsh (OH), Next to US-Oho,US-CRT,and US-OWC
+site_info <- replace_dates(site_info,"US-WPT",
+                           c("US-Oho","US-CRT","US-OWC"))
+
+
+
+
+
+
+site_info[site_info$site_id == "US-Sne"|
+            site_info$site_id == "US-Myb"|
+            site_info$site_id == "US-Dmg",]
+
+
 # Add Length of growing season (LGS)
 site_info$LGS <- as.numeric(as.Date(site_info$EOS) - as.Date(site_info$SOS))
+
 # Output this updated site_info
-write.csv(site_info,"00_Data/ameriflux_site_info_update_GS.csv")
+#write.csv(site_info,"00_Data/ameriflux_site_info_update_GS.csv")
 
 
 

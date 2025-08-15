@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Date: 2025.7.6
+# Date: 2025.8.15
 
 # These are functions for pre-processing AMF dataset
 # 01.1_AMF_processing.R is the main function which outputs a df of required hourly variables
@@ -247,3 +247,25 @@ Cal_diurnal_anomaly <- function(df,varname,windowdays){
     filter(Time %in% df$Time)
   return(df_out)
 }
+
+# This function is used in 01.5_LAI_processing.R
+# It is used to replace SOS and EOS for sites having no sufficient LAI with nearby sites
+# df is the input site_info df
+# target_site is one site that needs to be replaced
+# donor_sites are several closeby sites
+replace_dates <- function(df,target_site,donor_sites){
+  target_mask <- df$site_id == target_site
+  donor_mask <- df$site_id %in% donor_sites
+  
+  df$SOS[target_mask] <- as.character(mean(as.Date(df$SOS[donor_mask])))
+  df$EOS[target_mask] <- as.character(mean(as.Date(df$EOS[donor_mask])))
+  
+  return(df)
+}
+
+
+
+
+
+
+
