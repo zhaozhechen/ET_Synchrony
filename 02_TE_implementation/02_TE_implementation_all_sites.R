@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Update date: 2025.8.15
+# Update date: 2025.8.16
 
 # This code is to run TE at hourly scale for all AMF sites, across different time periods
 # Including full TS, GS during full TS, Non-GS during full TS, full TS across years, GS across years, and Non-GS across years
