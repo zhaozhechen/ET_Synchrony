@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Date: 2025.8.14
+# Date: 2025.8.15
 
 # This code is to smooth LAI using Savitzky-Golay filter
 # And calculate start of season (SOS) and end of season (EOS) for each year, at each sites
@@ -161,65 +161,39 @@ site_info$SOS <- SOS_ls
 site_info$EOS <- EOS_ls
 
 # Manually add SOS, EOS for sites having no sufficient LAI data =========================
-
 # US-CS5. Central Sands (WI). Use the mean of US-CS1, US-CS2, US-CS3, and US-CS4
 site_info <- replace_dates(site_info,"US-CS5",
                            c("US-CS1","US-CS2","US-CS3","US-CS4"))
 
-# US-HB1. Next to US-HB2 and US-HB3 (SC)
-site_info <- replace_dates(site_info,"US-HB1",
-                           c("US-HB2","US-HB3"))
-
-# US-KS3, Next to US-KS1 and US-KS2 (FL)
-site_info <- replace_dates(site_info,"US-KS3",
-                           c("US-KS1","US-KS2"))
-
-# US-ORv, Olentangy River Wetland Research Park (OH), use sites near Lake Erie in OH
-site_info <- replace_dates(site_info,"US-ORv",
-                           c("US-Oho","US-CRT","US-OWC"))
-
-# US-Pnp, Picnic Point Site (WI), use the site at US-DFC
-site_info <- replace_dates(site_info,"Pnp",
-                           c("US-DFC"))
-
-# US-Snf, UC-Berkeley (CA), next to Sne, Myb, and Dmg
+# US-Snf, UC-Berkeley (CA), next to Sne
 site_info <- replace_dates(site_info,"US-Snf",
-                           c("US-Oho","US-CRT","US-OWC"))
+                           c("US-Sne"))
 
+# US-UTB, UFLUX Bonneville Salt Flats (UT), next to US-xNQ
+site_info <- replace_dates(site_info,"US-UTB",
+                           c("US-xNQ"))
 
-# US-UM3
-
-#US-UTB
-
-# US-Wi0
+# US-Wi0 (WI), next to Wi1,Wi3,Wi4,Wi6
+site_info <- replace_dates(site_info,"US-Wi0",
+                           c("US-Wi1","US-Wi3","US-Wi4","US-Wi6"))
 
 # US-Wi5
+site_info <- replace_dates(site_info,"US-Wi5",
+                           c("US-Wi1","US-Wi3","US-Wi4","US-Wi6"))
 
 # US-Wi7
+site_info <- replace_dates(site_info,"US-Wi7",
+                           c("US-Wi1","US-Wi3","US-Wi4","US-Wi6"))
 
 # US-Wi8
-
-
-
-# US-WPT, Winous Point North Marsh (OH), Next to US-Oho,US-CRT,and US-OWC
-site_info <- replace_dates(site_info,"US-WPT",
-                           c("US-Oho","US-CRT","US-OWC"))
-
-
-
-
-
-
-site_info[site_info$site_id == "US-Sne"|
-            site_info$site_id == "US-Myb"|
-            site_info$site_id == "US-Dmg",]
-
+site_info <- replace_dates(site_info,"US-Wi8",
+                           c("US-Wi1","US-Wi3","US-Wi4","US-Wi6"))
 
 # Add Length of growing season (LGS)
 site_info$LGS <- as.numeric(as.Date(site_info$EOS) - as.Date(site_info$SOS))
 
 # Output this updated site_info
-#write.csv(site_info,"00_Data/ameriflux_site_info_update_GS.csv")
+write.csv(site_info,"00_Data/ameriflux_site_info_update_GS.csv")
 
 
 
