@@ -77,7 +77,14 @@ Site_ID <- site_info$site_id[arrayid]
 # Read in hourly data for this site
 AMF_df <- read.csv(paste0(AMF_path,"AMF_hourly_",Site_ID,".csv"))
 # Standardize the time of the df
-AMF_df <- Standardize_time(AMF_df)
+AMF_df <- Standardize_time(AMF_df) %>%
+  select(-c(X.1,X))
+# Complete time to avoid mismatch in time series alignment
+AMF_df <- AMF_df %>%
+  complete(Time = seq(min(Time),max(Time),by="1 hour"))
+
+
+
 # Convert psi_soil to log(psi_soil) to reduce skewness
 AMF_df$log10_psi_soil <- log10(AMF_df$psi_soil)
 # Calculate change in delta_log10_psi_soil
