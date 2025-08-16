@@ -431,21 +431,31 @@ TE_all_var_pairs <- function(var_comb,df_processed,
     # Get the Source and Sink values
     var_source <- df_processed[[varname_source]]
     var_sink <- df_processed[[varname_sink]]
+    # Record # of complete obs
+    n_obs <- sum(complete.cases(var_source,var_sink))
+    
     # Get the simplified titles for the source and sink
     var_source_title <- vartitle_ls[var_ls == varname_source]
     var_sink_title <- vartitle_ls[var_ls == varname_sink]
-    # Calculate TE from the source to the sink
-    TE_df <- Cal_TE_MI_main(Source = var_source,
-                            Sink = var_sink,
-                            nbins = nbins,
-                            Maxlag = Maxlag,
-                            alpha = alpha,
-                            nshuffle = nshuffle,
-                            upper_qt = upper_qt,
-                            lower_qt = lower_qt,
-                            ZFlagSource = ZFlagSource,
-                            ZFlagSink = ZFlagSink,
-                            Lag_Dependent_Crit = Lag_Dependent_Crit)
+    
+    # Only calculate TE if there is sufficient data. obs_th is a global variable
+    if(n_obs > obs_th){
+      # Calculate TE from the source to the sink
+      TE_df <- Cal_TE_MI_main(Source = var_source,
+                              Sink = var_sink,
+                              nbins = nbins,
+                              Maxlag = Maxlag,
+                              alpha = alpha,
+                              nshuffle = nshuffle,
+                              upper_qt = upper_qt,
+                              lower_qt = lower_qt,
+                              ZFlagSource = ZFlagSource,
+                              ZFlagSink = ZFlagSink,
+                              Lag_Dependent_Crit = Lag_Dependent_Crit)  
+      TE_df$n_obs <- n_obs
+    }else{
+      TE_df <- data.frame(n_obs = n_obs)
+    }
     
     # Store this TE_df
     TE_df_ls[[paste0(var_source_title,"_to_",var_sink_title)]] <- TE_df
