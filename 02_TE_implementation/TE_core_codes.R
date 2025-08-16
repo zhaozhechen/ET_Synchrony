@@ -454,7 +454,10 @@ TE_all_var_pairs <- function(var_comb,df_processed,
                               Lag_Dependent_Crit = Lag_Dependent_Crit)  
       TE_df$n_obs <- n_obs
     }else{
-      TE_df <- data.frame(n_obs = n_obs)
+      # Make a dummy TE_df
+      TE_df <- data.frame(Lag = 0, MI = 0, MIcrit = 0, TE = 0,TEcrit = 0, Corr=0, Corrcrit=0,
+                          Hx =1,Hy=1,
+                          n_obs = n_obs)
     }
     
     # Store this TE_df
@@ -506,9 +509,15 @@ TE_all_var_pairs_year <- function(var_comb,df_processed,
       # Get the Source and Sink values
       var_source <- df_year[[varname_source]]
       var_sink <- df_year[[varname_sink]]
+      # Record # of complete obs
+      n_obs <- sum(complete.cases(var_source,var_sink))
+      
       # If there if no sufficient data for this year, jump to next
-      if(sum(!is.na(var_source)) < 1000 | sum(!is.na(var_sink)) < 1000){
-        next
+      if(n_obs < obs_th){
+        # Make a dummy TE_df
+        TE_df <- data.frame(Lag = 0, MI = 0, MIcrit = 0, TE = 0,TEcrit = 0, Corr=0, Corrcrit=0,
+                            Hx =1,Hy=1,
+                            n_obs = n_obs)
       }else{
         # Calculate TE from the source to the sink
         TE_df <- Cal_TE_MI_main(Source = var_source,
@@ -522,7 +531,8 @@ TE_all_var_pairs_year <- function(var_comb,df_processed,
                                 ZFlagSource = ZFlagSource,
                                 ZFlagSink = ZFlagSink,
                                 Lag_Dependent_Crit = Lag_Dependent_Crit)
-        
+        TE_df$n_obs <- n_obs
+      }
         # Store this TE_df
         TE_df_ls[[paste0(var_source_title,"_to_",var_sink_title,"_",year_tmp)]] <- TE_df
         # Make a lag plot for this TE_df, only plot normalized TE vs lag
@@ -531,7 +541,6 @@ TE_all_var_pairs_year <- function(var_comb,df_processed,
         TE_g <- TE_lag_plot(TE_df,"TEnorm",my_color) + ggtitle(TE_g_title)
         # Store this plot
         TE_g_ls <- append(TE_g_ls,list(TE_g))
-      }
       #message(paste("Complete Year",year_tmp))
     }
     message(paste("Complete",i,"out of",nrow(var_comb)))
