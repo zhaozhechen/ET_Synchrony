@@ -306,7 +306,15 @@ var_plot_TS_Hist <- function(varname,y_title,df,my_color,ZFlag,nbins){
   # Plot the diurnal cycle of the variable, color coded by GS
   g_diurnal_TS <- TS_diurnal(varname,df,y_title,my_color)
   # Get the distribution of data
-  g_Hist <- Hist_GS_plot(varname,df,x_title = y_title,ZFlag,nbins,my_color)
+  # If all data is NA, leave it blank
+  if(sum(!is.na(df[[varname]])) == 0){
+    g_Hist <- ggplot() + 
+      xlim(0,5)+
+      ylim(0,5)
+  }else{
+    g_Hist <- Hist_GS_plot(varname,df,x_title = y_title,ZFlag,nbins,my_color)  
+  }
+  
   g_ls <- list(g_full_TS,g_annual_TS,g_diurnal_TS,g_Hist)
   
   # Combine these four plots
