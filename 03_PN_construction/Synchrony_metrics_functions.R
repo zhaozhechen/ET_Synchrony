@@ -20,18 +20,26 @@ cal_syc_metrics <- function(TE_df){
     mutate(TE_norm = if_else(TE_norm < TEcrit_norm,
                              NA,TE_norm))
   # Get peak TE
-  p_TE <- max(TE_df_1day$TE_norm,na.rm=TRUE)
-  # Get corresponding lag
-  p_lag <- TE_df_1day$Lag[which(TE_df_1day$TE_norm == p_TE)]
-  # Get memory
-  memory <- TE_df_tmp$Lag[which(TE_df_tmp$TE_norm < TE_df_tmp$TEcrit_norm)]
-  # memory has to be after peak TE
-  memory <- memory[memory > p_lag][1]
-
-  # If TE never drops below critical TE, assign max_lag to it
-  if(is.na(memory)){
-    memory <- max_lag
+  # if all TE values are insignificant
+  if(sum(TE_df_1day$TE_norm,na.rm=TRUE)==0){
+    p_TE <- NA
+    p_lag <- NA
+    memory <- NA
+  }else{
+    p_TE <- max(TE_df_1day$TE_norm,na.rm=TRUE)
+    # Get corresponding lag
+    p_lag <- TE_df_1day$Lag[which(TE_df_1day$TE_norm == p_TE)]
+    # Get memory
+    memory <- TE_df_tmp$Lag[which(TE_df_tmp$TE_norm < TE_df_tmp$TEcrit_norm)]
+    # memory has to be after peak TE
+    memory <- memory[memory > p_lag][1]
+    
+    # If TE never drops below critical TE, assign max_lag to it
+    if(is.na(memory)){
+      memory <- max_lag
+    }    
   }
+  
   return(c(p_TE,p_lag,memory))
 }
 
