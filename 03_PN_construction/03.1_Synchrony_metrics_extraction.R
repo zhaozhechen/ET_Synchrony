@@ -30,9 +30,15 @@ var_comb <- expand.grid(from = var_ls,
                         to = var_ls) %>%
   filter(from != to)
 
-# For full year =======
-file_name <- paste0("TE_df_ls_full_TS_",Site_ID,".rds")
-
+# For full year
+file_name_full_TS <- paste0("TE_df_ls_full_TS_",Site_ID,".rds")
+syc_metrics_full_TS <- cal_syc_metrics_all_pairs(file_name_full_TS)
+# For GS
+file_name_GS <- paste0("TE_df_ls_GS_",Site_ID,".rds")
+syc_metrics_GS <- cal_syc_metrics_all_pairs(file_name_GS)
+# For NGS
+file_name_NGS <- paste0("TE_df_ls_NGS_",Site_ID,".rds")
+syc_metrics_NGS <- cal_syc_metrics_all_pairs(file_name_NGS)
 
 
 

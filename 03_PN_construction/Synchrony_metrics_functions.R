@@ -24,7 +24,10 @@ cal_syc_metrics <- function(TE_df){
   # Get corresponding lag
   p_lag <- TE_df_1day$Lag[which(TE_df_1day$TE_norm == p_TE)]
   # Get memory
-  memory <- which(TE_df_tmp$TE_norm < TE_df_tmp$TEcrit_norm)[1]
+  memory <- TE_df_tmp$Lag[which(TE_df_tmp$TE_norm < TE_df_tmp$TEcrit_norm)]
+  # memory has to be after peak TE
+  memory <- memory[memory > p_lag][1]
+
   # If TE never drops below critical TE, assign max_lag to it
   if(is.na(memory)){
     memory <- max_lag
