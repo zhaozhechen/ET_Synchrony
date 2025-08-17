@@ -22,37 +22,40 @@ max_lag <- 72 # Maximum lag to consider
 var_ls <- c("ET","psi","VPD","TA")
 
 # ------- Main ------
-# Determines which Site to proceed
-arrayid <- 1
-Site_ID <- Site_info$site_id[arrayid]
 # All variable combinations
 var_comb <- expand.grid(from = var_ls,
                         to = var_ls) %>%
   filter(from != to)
 
-# For full year
-file_name_full_TS <- paste0("TE_df_ls_full_TS_",Site_ID,".rds")
-syc_metrics_full_TS <- cal_syc_metrics_all_pairs(file_name_full_TS)
-# For GS
-file_name_GS <- paste0("TE_df_ls_GS_",Site_ID,".rds")
-syc_metrics_GS <- cal_syc_metrics_all_pairs(file_name_GS)
-# For NGS
-file_name_NGS <- paste0("TE_df_ls_NGS_",Site_ID,".rds")
-syc_metrics_NGS <- cal_syc_metrics_all_pairs(file_name_NGS)
+# Loop over all sites
+# Initialize a vector
+syc_metrics_all_sites <- c()
+for(arrayid in 1:nrow(Site_info)){
+  Site_ID <- Site_info$site_id[arrayid]
+  # For full year
+  file_name_full_TS <- paste0("TE_df_ls_full_TS_",Site_ID,".rds")
+  syc_metrics_full_TS <- cal_syc_metrics_all_pairs(file_name_full_TS)
+  # For GS
+  file_name_GS <- paste0("TE_df_ls_GS_",Site_ID,".rds")
+  syc_metrics_GS <- cal_syc_metrics_all_pairs(file_name_GS)
+  # For NGS
+  file_name_NGS <- paste0("TE_df_ls_NGS_",Site_ID,".rds")
+  syc_metrics_NGS <- cal_syc_metrics_all_pairs(file_name_NGS)
+  # Combine these metrics together
+  syc_metrics_site <- as.data.frame(rbind(syc_metrics_full_TS,
+                                          syc_metrics_GS,
+                                          syc_metrics_NGS))
+  # Add Site ID
+  syc_metrics_site$Site_ID <- Site_ID
+  # Move Site_ID to the first column
+  syc_metrics_site <- syc_metrics_site[, c("Site_ID", setdiff(names(syc_metrics_site), "Site_ID"))]
+  # Add time period: full-TS, GS, or NGS
+  syc_metrics_site$GS <- c("FT","GS","NGS")
+  rownames(syc_metrics_site) <- NULL
+  # Add this site to all sites
+  syc_metrics_all_sites <- rbind(syc_metrics_all_sites,syc_metrics_site)
+  print(arrayid)
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Output this result df
+write.csv(syc_metrics_all_sites,"03_PN_construction/Results/Syc_metrics_all_sites.csv")
