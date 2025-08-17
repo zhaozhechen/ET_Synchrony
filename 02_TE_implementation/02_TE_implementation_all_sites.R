@@ -20,19 +20,19 @@ library(here)
 
 # Server parameters ================
 # Determines which site to process
-args <- commandArgs(trailingOnly = TRUE)
-arrayid <- as.integer(args[1]) + 1
-out_base <- args[2]
+#args <- commandArgs(trailingOnly = TRUE)
+#arrayid <- as.integer(args[1]) + 1
+#out_base <- args[2]
 
 # The root directory for output
-Output_path <- out_base
-Output_rdata_path <- file.path(out_base,"TE_df")
+#Output_path <- out_base
+#Output_rdata_path <- file.path(out_base,"TE_df")
 
 # Create output folders
-dir.create(Output_path, recursive = TRUE, showWarnings = FALSE)
-dir.create(file.path(out_base,"Var_plots"), recursive = TRUE, showWarnings = FALSE)
-dir.create(file.path(out_base,"Lag_plots"), recursive = TRUE, showWarnings = FALSE)
-dir.create(Output_rdata_path, recursive = TRUE, showWarnings = FALSE)
+#dir.create(Output_path, recursive = TRUE, showWarnings = FALSE)
+#dir.create(file.path(out_base,"Var_plots"), recursive = TRUE, showWarnings = FALSE)
+#dir.create(file.path(out_base,"Lag_plots"), recursive = TRUE, showWarnings = FALSE)
+#dir.create(Output_rdata_path, recursive = TRUE, showWarnings = FALSE)
 
 # Data path ===================
 # Source functions for data processing, TE implementation, and visualization
@@ -44,7 +44,7 @@ AMF_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Data/02_AMF_cleaned/
 # Input path to AMF site info, which also includes soil info
 site_info <- read.csv(here("00_data","ameriflux_site_info_update_GS.csv"))
 # Output path for the results
-#Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites/"
 
 # Parameters for TE implementation ===============
 n_bin <- 11 # Number of bins for TE discritization of continuous data (e.g., SM)
@@ -78,6 +78,9 @@ var_ls <- c("delta_ET_anomaly","delta_log10_psi_soil_anomaly","delta_VPD_anomaly
 vartitle_ls <- c("ET","psi","VPD","TA")
 
 # -------- Main ----------
+# US-CGG (20), US-CS2 (24), US-Hn3 (41), US-KS1 (50), US-RGF (83)
+arrayid <- 20
+
 Site_ID <- site_info$site_id[arrayid]
 
 # Step 1. Data processing and Calculation of secondary variables ---------------- 

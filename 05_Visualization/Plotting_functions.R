@@ -276,17 +276,31 @@ Hist_var_GS <- function(varname,df,ZFlag,nbins,gs){
 Hist_GS_plot <- function(varname,df,x_title,ZFlag,nbins,my_color){
   # Get hist_df for GS and Non-GS
   hist_df_GS <- Hist_var_GS(varname,df,ZFlag,nbins,"GS")
-  hist_df_NGS <- Hist_var_GS(varname,df,ZFlag,nbins,"Non-GS")
-
+  
+  # There could be cases when there is no NGS
+  # Skip if it errors:
+  hist_df_NGS <- tryCatch({
+    Hist_var_GS(varname,df,ZFlag,nbins,"Non-GS")    
+  },error=function(e){
+    message("No Non-GS for ",Site_ID)
+    NULL
+  })
+  
+  # Base plot of GS
   g <- ggplot()+
     geom_col(data=hist_df_GS,
              aes(x=bin_center,y=count),
              width=hist_df_GS$bin_width,color="black",fill=my_color[1],alpha=0.4)+
-    geom_col(data=hist_df_NGS,
-             aes(x=bin_center,y=count),
-             width=hist_df_NGS$bin_width,color="black",fill=my_color[2],alpha=0.4)+
     my_theme+
     labs(x = x_title,y="count")
+  
+  # Add NGS only if successful
+  if(!is.null(hist_df_NGS)){
+    g <- g+
+      geom_col(data=hist_df_NGS,
+               aes(x=bin_center,y=count),
+               width=hist_df_NGS$bin_width,color="black",fill=my_color[2],alpha=0.4)  
+  }
   return(g)
 }
 
