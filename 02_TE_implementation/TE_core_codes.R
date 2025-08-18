@@ -548,4 +548,3 @@ TE_all_var_pairs_year <- function(var_comb,df_processed,
   return(list(TE_df_ls,TE_g_ls))
 }
 
-

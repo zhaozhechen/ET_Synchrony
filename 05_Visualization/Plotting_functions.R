@@ -5,6 +5,7 @@ library(ggplot2)
 library(cowplot)
 library(RColorBrewer)
 library(data.table)
+library(gghalves)
 
 # Theme for all plots
 my_theme <- theme(
@@ -550,3 +551,32 @@ plot_LAI_TS <- function(GS_df,LAI_df,my_color){
   return(g)
 }
 
+# This function is to compare synchrony metrics across groups
+# Input include:
+# df: dataframe as in long data format
+# y_varname: synchrony metric to be compared
+# group_name: groups to be compared
+# y_title
+# x_labels: a vector of names for the groups
+# title: title of the plot
+# my_color: colors for the group
+# y_lim: range of y axis
+Hist_Syc <- function(df,y_varname,group_name,y_title,x_labels,title,my_color,y_lim){
+  g <- ggplot(data=df,aes(x=.data[[group_name]],
+                          y=.data[[y_varname]],
+                          fill=.data[[group_name]],
+                          color=.data[[group_name]]))+
+    geom_half_violin(alpha=0.5,color=NA)+
+    geom_boxplot(width=0.1,color="black",outlier.color = NA)+
+    geom_jitter(aes(x = as.numeric(.data[[group_name]])+0.2),
+                position = position_jitter(width=0.1),
+                alpha=0.7)+
+    my_theme+
+    labs(x="",y=y_title)+
+    scale_x_discrete(labels = x_labels)+
+    ggtitle(title)+
+    scale_fill_manual(values = my_color)+
+    scale_color_manual(values = my_color)+
+    ylim(y_lim)
+  return(g)
+}
