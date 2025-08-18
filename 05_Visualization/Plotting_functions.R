@@ -551,9 +551,20 @@ plot_LAI_TS <- function(GS_df,LAI_df,my_color){
   return(g)
 }
 
+# This function is to conduct Kruskal-Wallis test to compare syc metrics across group
+# df
+# y_varname: variable name to test
+# group_name: variable name that the variables need to be grouped by
+syc_compare <- function(df,y_varname,group_name){
+  f <- as.formula(paste0(y_varname,"~",group_name))
+  test <- kruskal.test(f,data=df)
+  p_value <- signif(test$p.value,2)
+  return(p_value)
+}
+
 # This function is to compare synchrony metrics across groups
 # Input include:
-# df: dataframe as in long data format
+# df: input df containing the target variables
 # y_varname: synchrony metric to be compared
 # group_name: groups to be compared
 # y_title
@@ -580,3 +591,18 @@ Hist_Syc <- function(df,y_varname,group_name,y_title,x_labels,title,my_color,y_l
     ylim(y_lim)
   return(g)
 }
+
+# This function adds p-value to the Histgram
+Hist_Syc_p_value <- function(df,y_varname,group_name,y_title,x_labels,title,my_color,y_lim,group1,group2){
+  # Make plot
+  g <- Hist_Syc(df,y_varname,group_name,y_title,x_labels,title,my_color,y_lim)
+  # Get p value
+  p_value <- syc_compare(df,y_varname,group_name)
+  # Add p value to the plot
+  p_value_text <- paste0("p = ",p_value)
+  g <- ggdraw()+
+    draw_plot(g,x=0,y=0,width=1,height=1)+
+    draw_label(p_value_text,x=0.98,y=0.98,hjust=1,vjust=1)
+  return(g)
+}
+
