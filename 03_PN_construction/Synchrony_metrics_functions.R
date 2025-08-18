@@ -75,3 +75,14 @@ cal_syc_metrics_all_pairs <- function(file_name){
   }
   return(syc_metrics_all)
 }
+
+# This function is to conduct Kruskal-Wallis test to compare syc metrics across group
+# df
+# y_varname: variable name to test
+# group_name: variable name that the variables need to be grouped by
+syc_compare <- function(df,y_varname,group_name){
+  f <- as.formula(paste0(y_varname,"~",group_name))
+  test <- kruskal.test(f,data=df)
+  p_value <- signif(test$p.value,2)
+  return(p_value)
+}

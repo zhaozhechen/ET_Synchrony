@@ -551,17 +551,6 @@ plot_LAI_TS <- function(GS_df,LAI_df,my_color){
   return(g)
 }
 
-# This function is to conduct Kruskal-Wallis test to compare syc metrics across group
-# df
-# y_varname: variable name to test
-# group_name: variable name that the variables need to be grouped by
-syc_compare <- function(df,y_varname,group_name){
-  f <- as.formula(paste0(y_varname,"~",group_name))
-  test <- kruskal.test(f,data=df)
-  p_value <- signif(test$p.value,2)
-  return(p_value)
-}
-
 # This function is to compare synchrony metrics across groups
 # Input include:
 # df: input df containing the target variables
@@ -606,3 +595,36 @@ Hist_Syc_p_value <- function(df,y_varname,group_name,y_title,x_labels,title,my_c
   return(g)
 }
 
+# This function make scatter plots to compare two variables
+scatter_vars <- function(df,varname1,varname2,group_name,xtitle,ytitle){
+  # Formula for the line
+  f <- as.formula(paste0(varname2,"~",varname1))
+  # Make a line
+  lm <- lm(f,data=df)
+  # Get parameters
+  k <- lm$coefficients[2]
+  b <- lm$coefficients[1]
+  p <- signif(summary(lm)$coefficients[2,4],2)
+  R2 <- round(summary(lm)$r.squared,3)
+  
+  g <- ggplot(data=df,aes(x=.data[[varname1]],y=.data[[varname2]],color=.data[[group_name]]))+
+    geom_point(size=2,alpha=0.7)+
+    my_theme+
+    labs(x=xtitle,y=ytitle,color="")+
+    geom_abline(slope = k,intercept = b)+
+    annotate(
+      geom = "text",
+      x=Inf,y=-Inf,
+      label = bquote(italic(p) == .(p)),
+      hjust=1.2,vjust=-2,
+      size=5)+
+    annotate(
+      geom = "text",
+      x=Inf,y=-Inf,
+      label = bquote(R^2 == .(R2)),
+      hjust=1.2,vjust=-4,
+      size=5)+
+    theme(legend.position = c(0.15,0.85),
+          legend.title = element_blank())
+  return(g)
+}
