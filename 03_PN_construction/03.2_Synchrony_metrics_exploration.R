@@ -84,21 +84,71 @@ print_g(g_syc,"Syc_metrics_season",
         10,10)
 
 # Compare synchrony metrics between variables pairs ============================
-# This function is to make scatter plot and compare two variables
-varname1 <- "p_TE_psi_to_ET"
-varname2 <- "p_TE_VPD_to_ET"
-df <- Syc_metrics_df
-xtitle <- bquote(TEmax~"("~Delta~psi~"\u2192"~Delta~ET~")")
-ytitle <- bquote(TEmax~"("~Delta~VPD~"\u2192"~Delta~ET~")")
-group_name <- "GS"
+# Peak TE
+g_p_TE_psi_vs_VPD <- scatter_vars(df = Syc_metrics_df,
+                                  "p_TE_psi_to_ET","p_TE_VPD_to_ET",
+                                  "GS",
+                                  xtitle = bquote(TEmax~"("~Delta~psi~"\u2192"~Delta~ET~")"),
+                                  ytitle = bquote(TEmax~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
+                                  my_color = season_color)
+g_p_TE_psi_vs_TA <- scatter_vars(df = Syc_metrics_df,
+                                 "p_TE_psi_to_ET","p_TE_TA_to_ET",
+                                 "GS",
+                                 xtitle = bquote(TEmax~"("~Delta~psi~"\u2192"~Delta~ET~")"),
+                                 ytitle = bquote(TEmax~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
+                                 my_color = season_color)
+g_p_TE_VPD_vs_TA <- scatter_vars(df = Syc_metrics_df,
+                                 "p_TE_VPD_to_ET","p_TE_TA_to_ET",
+                                 "GS",
+                                 xtitle = bquote(TEmax~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
+                                 ytitle = bquote(TEmax~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
+                                 my_color = season_color)
+# Lag
+g_p_lag_psi_vs_VPD <- scatter_vars(df = Syc_metrics_df,
+                                   "p_lag_psi_to_ET","p_lag_VPD_to_ET",
+                                   "GS",
+                                   xtitle = bquote(Lag~"("~Delta~psi~"\u2192"~Delta~ET~")"),
+                                   ytitle = bquote(Lag~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
+                                   my_color = season_color)
+g_p_lag_psi_vs_TA <- scatter_vars(df = Syc_metrics_df,
+                                  "p_lag_psi_to_ET","p_lag_TA_to_ET",
+                                  "GS",
+                                  xtitle = bquote(Lag~"("~Delta~psi~"\u2192"~Delta~ET~")"),
+                                  ytitle = bquote(Lag~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
+                                  my_color = season_color)
+g_p_lag_VPD_vs_TA <- scatter_vars(df = Syc_metrics_df,
+                                  "p_lag_VPD_to_ET","p_lag_TA_to_ET",
+                                  "GS",
+                                  xtitle = bquote(Lag~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
+                                  ytitle = bquote(Lag~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
+                                  my_color = season_color)
+# Memory
+g_mem_psi_vs_VPD <- scatter_vars(df = Syc_metrics_df,
+                                 "mem_psi_to_ET","mem_VPD_to_ET",
+                                 "GS",
+                                 xtitle = bquote(Memory~"("~Delta~psi~"\u2192"~Delta~ET~")"),
+                                 ytitle = bquote(Memory~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
+                                 my_color = season_color)
+g_mem_psi_vs_TA <- scatter_vars(df = Syc_metrics_df,
+                                "mem_psi_to_ET","mem_TA_to_ET",
+                                "GS",
+                                xtitle = bquote(Memory~"("~Delta~psi~"\u2192"~Delta~ET~")"),
+                                ytitle = bquote(Memory~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
+                                my_color = season_color)
+g_mem_VPD_vs_TA <- scatter_vars(df = Syc_metrics_df,
+                                "mem_VPD_to_ET","mem_TA_to_ET",
+                                "GS",
+                                xtitle = bquote(Memory~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
+                                ytitle = bquote(Memory~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
+                                my_color = season_color)
+# Combine these plots
+g_syc_var <- plot_grid(g_p_TE_psi_vs_VPD,g_p_TE_psi_vs_TA,g_p_TE_VPD_vs_TA,
+                       g_p_lag_psi_vs_VPD,g_p_lag_psi_vs_TA,g_p_lag_VPD_vs_TA,
+                       g_mem_psi_vs_VPD,g_mem_psi_vs_TA,g_mem_VPD_vs_TA,
+                       nrow = 3,
+                       align = "hv",
+                       labels = "auto")
+print_g(g_syc_var,"Syc_metrics_variables",
+        10,10)
 
 
-
-
-
-
-
-
-
-
-# Plot p_TE_psi_to_ET vs p_TE_VPD_to_ET, color coded by something

@@ -596,7 +596,7 @@ Hist_Syc_p_value <- function(df,y_varname,group_name,y_title,x_labels,title,my_c
 }
 
 # This function make scatter plots to compare two variables
-scatter_vars <- function(df,varname1,varname2,group_name,xtitle,ytitle){
+scatter_vars <- function(df,varname1,varname2,group_name,xtitle,ytitle,my_color){
   # Formula for the line
   f <- as.formula(paste0(varname2,"~",varname1))
   # Make a line
@@ -625,6 +625,8 @@ scatter_vars <- function(df,varname1,varname2,group_name,xtitle,ytitle){
       hjust=1.2,vjust=-4,
       size=5)+
     theme(legend.position = c(0.15,0.85),
-          legend.title = element_blank())
+          legend.title = element_blank(),
+          legend.background = element_blank())+
+    scale_color_manual(values=my_color)
   return(g)
 }
