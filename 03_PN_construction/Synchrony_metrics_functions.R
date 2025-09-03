@@ -11,36 +11,42 @@ cal_syc_metrics <- function(TE_df){
   # Normalize TE and TEcrit
   TE_df_tmp <- TE_df %>%
     mutate(TE_norm = TE/Hy * 100,
-           TEcrit_norm = TEcrit/Hy * 100) %>%
-    select(Lag,TE_norm,TEcrit_norm)
+           TEcrit_norm = TEcrit/Hy * 100,
+           # Add significance flag
+           sig = if_else(!is.na(TE_norm) & !is.na(TEcrit_norm) & (TE_norm > TEcrit_norm),
+                         TRUE,FALSE)) %>%
+    select(Lag,TE_norm,TEcrit_norm,sig)
   # Only consider the first 24 hours
-  TE_df_1day <- TE_df_tmp[1:24,]
-  # Only consider significant values
-  TE_df_1day <- TE_df_1day %>%
-    mutate(TE_norm = if_else(TE_norm < TEcrit_norm,
-                             NA,TE_norm))
-  # Get peak TE
+  TE_df_24h <- TE_df_tmp[1:24,]
+  
   # if all TE values are insignificant
-  if(sum(TE_df_1day$TE_norm,na.rm=TRUE)==0){
+  if(sum(TE_df_24h$sig,na.rm=TRUE)==0){
     p_TE <- NA
     p_lag <- NA
-    memory <- NA
+    mem <- NA
+    agg_TE <- NA
   }else{
-    p_TE <- max(TE_df_1day$TE_norm,na.rm=TRUE)
+    p_TE <- max(TE_df_24h$TE_norm[TE_df_24h$sig],na.rm=TRUE)
     # Get corresponding lag
-    p_lag <- TE_df_1day$Lag[which(TE_df_1day$TE_norm == p_TE)]
-    # Get memory
-    memory <- TE_df_tmp$Lag[which(TE_df_tmp$TE_norm < TE_df_tmp$TEcrit_norm)]
-    # memory has to be after peak TE
-    memory <- memory[memory > p_lag][1]
+    p_lag <- TE_df_24h$Lag[which(TE_df_24h$TE_norm == p_TE)[1]]
     
-    # If TE never drops below critical TE, assign max_lag to it
-    if(is.na(memory)){
-      memory <- max_lag
-    }    
+    # Find the first non-significant lag after the peak
+    TE_after_peak <- TE_df_tmp %>%
+      filter(Lag > p_lag)
+    nonsig_lags <- TE_after_peak$Lag[which(TE_after_peak$sig == FALSE)]
+    
+    # Get memory
+    if(length(nonsig_lags) == 0){
+      mem <- max_lag
+    }else{
+      mem <- nonsig_lags[1] - p_lag
+    }
+    
+    # Calculate aggregate TE within the first 24 hours
+    agg_TE <- sum(TE_df_24h$TE_norm[TE_df_24h$sig],na.rm=TRUE)
   }
   
-  return(c(p_TE,p_lag,memory))
+  return(c(p_TE,p_lag,mem,agg_TE))
 }
 
 # This function calculates syc metrics for all pairs of variables
@@ -64,13 +70,13 @@ cal_syc_metrics_all_pairs <- function(file_name){
     # Check if this TE_df is valid
     if(nrow(TE_df) < max_lag){
       # All NA
-      syc_metrics <- c(NA,NA,NA)
+      syc_metrics <- c(NA,NA,NA,NA)
     }else{
       # Calculate Synchrony metrics if valid
       syc_metrics <- cal_syc_metrics(TE_df)
     }
     # Name these metrics
-    names(syc_metrics) <- paste0(c("p_TE_","p_lag_","mem_"),TE_df_name)
+    names(syc_metrics) <- paste0(c("p_TE_","p_lag_","mem_","agg_TE_"),TE_df_name)
     syc_metrics_all <- c(syc_metrics_all,syc_metrics)
   }
   return(syc_metrics_all)

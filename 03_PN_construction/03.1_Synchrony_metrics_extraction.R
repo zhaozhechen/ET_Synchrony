@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
-# Date: 2025.8.17
+# Date: 2025.9.2
 
 # This code is to extract Synchrony metrics (peak TE, memory, lag)
 # Peak TE: maximum significant TE normalized by Shannon entropy of the sink
@@ -35,6 +35,14 @@ for(arrayid in 1:nrow(Site_info)){
   # For full year
   file_name_full_TS <- paste0("TE_df_ls_full_TS_",Site_ID,".rds")
   syc_metrics_full_TS <- cal_syc_metrics_all_pairs(file_name_full_TS)
+  
+  
+  
+  
+  
+  
+  
+  
   # For GS
   file_name_GS <- paste0("TE_df_ls_GS_",Site_ID,".rds")
   syc_metrics_GS <- cal_syc_metrics_all_pairs(file_name_GS)
