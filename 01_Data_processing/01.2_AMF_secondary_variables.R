@@ -1,8 +1,10 @@
 # Author: Zhaozhe Chen
-# Update date: 2025.8.15
+# Update date: 2025.9.4
 
 # This code matches soil properties to AMF sites
 # Sites of Wetland or Water are filtered out
+# Matches Aridity index (AI)
+# Note: AI and climate zone need to be updated !!!!!
 
 # ---------- Global ---------------
 library(here)
@@ -47,4 +49,5 @@ site_info$soil_texture <- texture_all
 # Match corresponding soil hydraulic traits with the sites
 site_info_update <- site_info %>%
   left_join(Soil_lookup,by=c("soil_texture" = "Class.code"))
+
 write.csv(site_info_update,here("00_Data","ameriflux_site_info_update.csv"))

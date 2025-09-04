@@ -11,6 +11,8 @@ library(tidyr)
 Syc_metrics_df <- read.csv("03_PN_construction/Results/Syc_metrics_all_sites.csv")
 # Updated site info
 Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
+# Input path for Aridity index
+Site_info_AI <- read.csv("00_Data/Site_summary.csv")
 # Source plotting functions
 source("05_Visualization/Plotting_functions.R")
 # Source synchrony functions
@@ -23,14 +25,32 @@ season_color <- brewer.pal(3,"Set2")
 # --------- Main ---------
 Syc_metrics_df <- Syc_metrics_df  %>%
   select(-X) %>%
-  # Only keep GS and Non-GS
-  filter(GS != "FT") %>%
   # Join by Site_info
-  left_join(Site_info %>% select(Site_ID = site_id,IGBP_veg,Soil_type = Description),
+  left_join(Site_info %>% rename(Site_ID = site_id,Soil_type = Description),
             by = "Site_ID") %>%
+  # Join by AI
+  left_join(Site_info_AI %>% select(Site_ID,AI),by="Site_ID") %>%
   mutate(Soil_type = as.factor(Soil_type),
          IGBP_veg = as.factor(IGBP_veg),
-         GS = as.factor(GS))
+         GS = as.factor(GS)) %>%
+  # Classify AI into five gradients
+  mutate(
+    AI_level = case_when(
+      AI < 0.05 ~ "Hyperarid",
+      AI >= 0.05 & AI < 0.2 ~ "Arid",
+      AI >= 0.2 & AI < 0.5 ~ "Semiarid",
+      AI >= 0.5 & AI < 0.65 ~ "Semihumid",
+      AI >= 0.65 ~ "Humid"
+    ),
+    AI_level = factor(AI_level,
+                      levels=c("Hyperarid","Arid","Semiarid","Semihumid","Humid"),
+                      ordered = TRUE)
+  )
+
+
+
+
+
 
 # Comparison of Synchrony metrics from psi, VPD, and TA to ET =================
 # peak TE
