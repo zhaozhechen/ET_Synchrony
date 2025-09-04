@@ -9,14 +9,14 @@ library(lomb) # This is for Lomb-Scargle Periodogram
 # TE_df_tmp: include two columns, Time and normalized TE
 # This function outputs the significant period, and its LS plot
 # If no significant period, returns NA
-get_period <- function(TE_df_tmp){
+get_period <- function(TE_df_tmp,p_color){
   TE_df_tmp <- TE_df_tmp %>%
     select(Lag,TE_norm)
   # Use Lomb-Scargle Periodogram to detect
-  results <- lsp(TE_df_tmp,from =1/48,to=1/4,ofac =3,type="frequency",alpha=0.01)
+  results <- lsp(TE_df_tmp,from =1/48,to=1/4,ofac =3,type="frequency",alpha=0.05)
 
   # Make the Lomb-Scargle Periodogram
-  g_LSP <- plot_LSP(results)
+  g_LSP <- plot_LSP(results,p_color)
   
   # Check if there is a statistically significant peak
   if(!is.null(results$peak.at) && (results$peak > results$sig.level)){
@@ -30,11 +30,16 @@ get_period <- function(TE_df_tmp){
 # This function calculates synchrony metrics
 # Input include:
 # TE_df: full TE_df from the source to the sink
-# Output include:
-# p_TE: peak TE
+# m_color: a color vector of five for the plots
+# TE_g_title: title for the TE vs lag plot
+# Output include a list of two elements:
+# g: the combined plots of TE vs lag and its corresponding Lomb Scargle Periodogram
+# Synchrony metrics including
+# p_TE: peak daily TE
 # p_lag: lag corresponding to peak TE
-# memory: time required for TE to drop below critical TE
-cal_syc_metrics <- function(TE_df){
+# memory: time required for TE to drop from peak to below critical TE
+# agg_TE: daily aggregated TE in the first 24 hours
+cal_syc_metrics <- function(TE_df,m_color,TE_g_title){
   # Normalize TE and TEcrit
   TE_df_tmp <- TE_df %>%
     mutate(TE_norm = TE/Hy * 100,
@@ -46,7 +51,7 @@ cal_syc_metrics <- function(TE_df){
   
   # Detect periodicity, no need to consider significance of TE values
   # Use Lomb-Scargle Periodogram to detect
-  LS_results <- get_period(TE_df_tmp)
+  LS_results <- get_period(TE_df_tmp,m_color[4])
 
   # Extract synchrony metrics --------
   # Only consider the first 24 hours
@@ -57,6 +62,15 @@ cal_syc_metrics <- function(TE_df){
     p_lag <- NA
     mem <- NA
     agg_TE <- NA
+    # Also make TE vs lag plot, but no metrics annotated
+    g_TE <- ggplot(TE_df_tmp,aes(x=Lag,y=TE_norm))+
+      geom_line(linewidth=0.8)+
+      labs(x="Lag (h)",y="Uncertainty reduction (%)")+
+      geom_line(aes(y=TEcrit_norm),
+                linewidth = 0.8,
+                linetype = "dashed",
+                color=m_color[2])+
+      my_theme
   }else{
     p_TE <- max(TE_df_24h$TE_norm[TE_df_24h$sig],na.rm=TRUE)
     # Get corresponding lag
@@ -76,21 +90,21 @@ cal_syc_metrics <- function(TE_df){
     
     # Calculate aggregate TE within the first 24 hours
     agg_TE <- sum(TE_df_24h$TE_norm[TE_df_24h$sig],na.rm=TRUE)
+    
+    # Make the TE_lag plot, with synchorny metrics labeled
+    g_TE <- TE_norm_lag_plot(TE_df_tmp,p_lag,p_TE,mem,m_color)
   }
   
-  # Output synchrony metrics
-  syc_metrics <- c(p_TE,p_lag,mem,agg_TE,period)
-  
-  
-  
-  
-  
-  # Should directly output LS plot, together with TE plot
-  # File name should be passed
-  
-  
-  out <- list(LS_g = LS_g,
-              syc_metrics = c(p_TE,p_lag,mem,agg_TE,period))
+  # synchrony metrics for output
+  syc_metrics <- c(p_TE,p_lag,mem,agg_TE,LS_results$period)
+  # Combine TE plot and LS plot
+  g_TE <- g_TE +
+    ggtitle(TE_g_title)
+  g <- plot_grid(g_TE,LS_results$g,
+                 nrow=1,align = "hv",
+                 rel_widths = c(1.5,1))
+
+  out <- list(g,syc_metrics)
   return(out)
 }
 
@@ -99,10 +113,9 @@ cal_syc_metrics <- function(TE_df){
 # Input include:
 # Site_ID: Site_ID for the site
 # type: should be a character: "full_TS","GS", or "NGS"
+# m_color: a color of five for plotting
 # Output: a vector of length 36, for syc metrics for all pairs of variables
-Site_ID <- Site_ID
-type <- "full_TS"
-cal_syc_metrics_all_pairs <- function(Site_ID,type){
+cal_syc_metrics_all_pairs <- function(Site_ID,type,m_color){
   # Get file name for the TE_df_ls
   file_name <- paste0("TE_df_ls_",type,"_",Site_ID,".rds")
   # Read in TE_df_ls
@@ -110,6 +123,8 @@ cal_syc_metrics_all_pairs <- function(Site_ID,type){
   # Loop over each variable pair
   # Initialize a vector to store all output syc metrics for all pairs
   syc_metrics_all <- c()
+  # Initialize a list to store plots for all pairs
+  g_all <- list()
   for(i in 1:nrow(var_comb)){
     # Source and sink name
     source_name <- as.character(var_comb$from[i])
@@ -117,26 +132,38 @@ cal_syc_metrics_all_pairs <- function(Site_ID,type){
     # Get TE_df for this pair
     TE_df_name <- paste0(source_name,"_to_",sink_name)
     TE_df <- TE_df_ls[[TE_df_name]]
+    # Get title for the plot
+    TE_g_title <- bquote(Delta~.(as.name(source_name))~"\u2192"~Delta~.(as.name(sink_name)))
     # Check if this TE_df is valid
     if(nrow(TE_df) < max_lag){
       # All NA
       syc_metrics <- c(NA,NA,NA,NA,NA)
+      # Make a blank plot as place holder
+      g <- ggplot()+
+        xlim(0,5)+
+        ylim(0,5)+
+        ggtitle(TE_g_title)+
+        my_theme
     }else{
       # Calculate Synchrony metrics if valid
-      syc_results <- cal_syc_metrics(TE_df,TE_df_name,type)
-      
-      
-      
-      
-      
-      
-      
-      syc_metrics <- cal_syc_metrics(TE_df)[2]
+      syc_results <- cal_syc_metrics(TE_df,m_color,TE_g_title)
+      syc_metrics <- syc_results[[2]]
+      g <- syc_results[[1]]
     }
     # Name these metrics
-    names(syc_metrics) <- paste0(c("p_TE_","p_lag_","mem_","agg_TE_"),TE_df_name)
+    names(syc_metrics) <- paste0(c("p_TE_","p_lag_","mem_","agg_TE_","period_"),TE_df_name)
     syc_metrics_all <- c(syc_metrics_all,syc_metrics)
+    # Add the figure to the list
+    g_all[[i]] <- g
   }
+  # Combine all plots and output
+  g_out <- plot_grid(plotlist = g_all,
+                 ncol=3,
+                 align="hv")
+  # Output this figure
+  print_g(g_out,paste0("TE_LS_plots_",type,"_",Site_ID),
+          16,12)
+  
   return(syc_metrics_all)
 }
 

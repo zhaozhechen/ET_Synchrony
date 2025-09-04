@@ -552,8 +552,8 @@ plot_LAI_TS <- function(GS_df,LAI_df,my_color){
 }
 
 # This function is to make Lomb-Scargle Periodogram for the TE vs lag plots
-# Input is the LS results
-plot_LSP <- function(LSP_results){
+# Input is the LS results, and the color for the peak line
+plot_LSP <- function(LSP_results,p_color){
   df <- data.frame(freq = LSP_results$scanned,
                    power = LSP_results$power)
   peak_freq <- LSP_results$peak.at[1]
@@ -561,19 +561,86 @@ plot_LSP <- function(LSP_results){
   peak_power <- LSP_results$peak
   
   g <- ggplot(df,aes(x=freq,y=power))+
-    geom_line()+
+    geom_line(linewidth = 0.8)+
     geom_hline(yintercept = LSP_results$sig.level,linetype = "dashed")+
-    geom_vline(xintercept = peak_freq,color="red")+
-    geom_text(aes(x=peak_freq,y=peak_power - 0.02),
-              label = paste0("P = ",peak_period,"h"),
-              color="red",size=5,hjust=-0.5)+
+    geom_vline(xintercept = peak_freq,color=p_color,linewidth=0.8)+
     labs(x = "Frequency",y="Normalized Power")+
-    my_theme
+    my_theme+
+    scale_x_continuous(n.breaks=3)
+  
+  if(peak_power > LSP_results$sig.level){
+    g <- g +
+      geom_text(aes(x=peak_freq,y=peak_power - 0.02),
+                label = paste0("P = ",peak_period,"h"),
+                color=p_color,size=5,hjust=-0.2)
+  }
   
   return(g)
 }
 
-
+# This function is to make normalized TE plot vs lag, with synchrony metrics annotated
+# Input include:
+# TE_df_tmp: TE_df with normalized TE and normalized TE critical value
+# p_lag: peak lag in hours
+# p_TE: peak TE value
+# mem: memory in hours
+TE_norm_lag_plot <- function(TE_df_tmp,p_lag,p_TE,mem,m_color){
+  g_TE <- ggplot(TE_df_tmp,aes(x=Lag,y=TE_norm))+
+    geom_line(linewidth=0.8)+
+    labs(x="Lag (h)",y="Uncertainty reduction (%)")+
+    geom_line(aes(y=TEcrit_norm),
+              linewidth = 0.8,
+              linetype = "dashed",
+              color=m_color[2])+
+    # Add peak lag
+    geom_vline(xintercept = p_lag,
+               linewidth = 0.8,
+               color=m_color[5])+
+    # Annotate peak lag
+    annotate("text",
+             x=p_lag,
+             y=max(TE_df_tmp$TE_norm*1.05,na.rm=TRUE),
+             label = paste0("Best Lag = ",p_lag,"h"),
+             size=5,
+             hjust = -0.2,
+             color=my_color[5])+
+    # Annotate peak TE value
+    annotate("text",
+             x=p_lag,
+             y=max(TE_df_tmp$TE_norm*0.95,na.rm=TRUE),
+             label = paste0("Peak daily TE = ",round(p_TE,2),"%"),
+             size=5,
+             hjust = -0.1,
+             color=my_color[1])+
+    # Add memory
+    annotate("segment",
+             x=p_lag,xend=p_lag + mem,
+             y= mean(TE_df_tmp$TEcrit_norm, na.rm=TRUE)*1.05,
+             arrow = arrow(ends = "both",type = "closed",length = unit(10,"pt")),
+             color = m_color[3])+
+    my_theme
+  
+  if(mem == max_lag){
+    g_TE <- g_TE +
+      annotate("text",
+               x=p_lag,
+               y=mean(TE_df_tmp$TEcrit_norm, na.rm=TRUE)*1.2,
+               label = paste0("Memory ≥ ",mem,"h"),
+               size=5,
+               hjust = -0.1,
+               color=my_color[3])
+  }else{
+    g_TE <- g_TE +
+      annotate("text",
+               x=p_lag,
+               y=mean(TE_df_tmp$TEcrit_norm, na.rm=TRUE)*1.2,
+               label = paste0("Memory = ",mem,"h"),
+               size=5,
+               hjust = -0.1,
+               color=my_color[3])
+  }
+  return(g_TE)
+}
 
 # This function is to compare synchrony metrics across groups
 # Input include:

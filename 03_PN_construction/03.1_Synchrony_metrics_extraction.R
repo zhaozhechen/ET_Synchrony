@@ -18,7 +18,9 @@ Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 source("03_PN_construction/Synchrony_metrics_functions.R")
 source("05_Visualization/Plotting_functions.R")
 # Output path for LSP plots
-#Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/LSP_plots/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/TE_LS_plots/"
+my_color <- brewer.pal(5,"Set1")
+
 
 max_lag <- 72 # Maximum lag to consider
 # All variable pairs to consider
@@ -35,22 +37,12 @@ var_comb <- expand.grid(from = var_ls,
 syc_metrics_all_sites <- c()
 for(arrayid in 1:nrow(Site_info)){
   Site_ID <- Site_info$site_id[arrayid]
-  
-
-  
-  
-  
   # For full year
-  file_name_full_TS <- paste0("TE_df_ls_full_TS_",Site_ID,".rds")
-  syc_metrics_full_TS <- cal_syc_metrics_all_pairs(file_name_full_TS)
-
+  syc_metrics_full_TS <- cal_syc_metrics_all_pairs(Site_ID,"full_TS",my_color)
   # For GS
-  file_name_GS <- paste0("TE_df_ls_GS_",Site_ID,".rds")
-  syc_metrics_GS <- cal_syc_metrics_all_pairs(file_name_GS)
-  
+  syc_metrics_GS <- cal_syc_metrics_all_pairs(Site_ID,"GS",my_color)
   # For NGS
-  file_name_NGS <- paste0("TE_df_ls_NGS_",Site_ID,".rds")
-  syc_metrics_NGS <- cal_syc_metrics_all_pairs(file_name_NGS)
+  syc_metrics_NGS <- cal_syc_metrics_all_pairs(Site_ID,"NGS",my_color)
   
   # Combine these metrics together
   syc_metrics_site <- as.data.frame(rbind(syc_metrics_full_TS,
