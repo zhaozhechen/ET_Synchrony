@@ -551,6 +551,30 @@ plot_LAI_TS <- function(GS_df,LAI_df,my_color){
   return(g)
 }
 
+# This function is to make Lomb-Scargle Periodogram for the TE vs lag plots
+# Input is the LS results
+plot_LSP <- function(LSP_results){
+  df <- data.frame(freq = LSP_results$scanned,
+                   power = LSP_results$power)
+  peak_freq <- LSP_results$peak.at[1]
+  peak_period <- round(1/peak_freq,2)
+  peak_power <- LSP_results$peak
+  
+  g <- ggplot(df,aes(x=freq,y=power))+
+    geom_line()+
+    geom_hline(yintercept = LSP_results$sig.level,linetype = "dashed")+
+    geom_vline(xintercept = peak_freq,color="red")+
+    geom_text(aes(x=peak_freq,y=peak_power - 0.02),
+              label = paste0("P = ",peak_period,"h"),
+              color="red",size=5,hjust=-0.5)+
+    labs(x = "Frequency",y="Normalized Power")+
+    my_theme
+  
+  return(g)
+}
+
+
+
 # This function is to compare synchrony metrics across groups
 # Input include:
 # df: input df containing the target variables

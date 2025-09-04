@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
-# Date: 2025.9.3
+# Date: 2025.9.4
 
 # This code is to extract Synchrony metrics (peak TE, memory, lag)
 # Peak TE: maximum significant TE normalized by Shannon entropy of the sink
@@ -16,6 +16,9 @@ TE_df_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_
 Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 # Source functions
 source("03_PN_construction/Synchrony_metrics_functions.R")
+source("05_Visualization/Plotting_functions.R")
+# Output path for LSP plots
+#Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/LSP_plots/"
 
 max_lag <- 72 # Maximum lag to consider
 # All variable pairs to consider
@@ -32,6 +35,10 @@ var_comb <- expand.grid(from = var_ls,
 syc_metrics_all_sites <- c()
 for(arrayid in 1:nrow(Site_info)){
   Site_ID <- Site_info$site_id[arrayid]
+  
+
+  
+  
   
   # For full year
   file_name_full_TS <- paste0("TE_df_ls_full_TS_",Site_ID,".rds")
