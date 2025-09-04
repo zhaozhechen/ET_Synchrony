@@ -1,11 +1,13 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
 # Date: 2025.9.4
 
-# This code is to extract Synchrony metrics (peak TE, memory, lag)
-# Peak TE: maximum significant TE normalized by Shannon entropy of the sink
-# Memory: time required for TE to become insignificant
+# This code is to extract Synchrony metrics (peak TE, memory, lag, aggTE)
+# Peak daily TE: maximum significant TE normalized by Shannon entropy of the sink within the first 24 hours
+# Memory: the persistence of influence after the maximum strength of synchrony, defined as the interval from the lag of maximum TE to the first subsequent lag where TE falls below the significance threshold.
 # Lag: best lag corresponding to peak TE
-# Note: Focus on full TE, GS, and NGS for now. No years results included
+# Daily aggregate TE: The total magnitude/contribution of predictive influence distributed across 24 hours, defined as the sum of TE for the set of lags with significant TE within 24 hours.
+# Also output normalized TE vs lag + Lomb-Scargle periodogram for all sites, for Full TS, GS, and NGS
+# Note: Focus on full TS, GS, and NGS for now. No years results included
 
 # ------ Global ------ 
 library(dplyr)

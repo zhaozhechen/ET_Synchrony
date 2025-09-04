@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
-# Date: 2025.8.18
+# Date: 2025.9.4
 
 # This code is to explore and analyze synchrony metrics
 
