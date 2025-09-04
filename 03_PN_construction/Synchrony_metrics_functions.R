@@ -167,6 +167,30 @@ cal_syc_metrics_all_pairs <- function(Site_ID,type,m_color){
   return(syc_metrics_all)
 }
 
+# This function get synchrony metrics for each site, 
+# and output TE vs lag + LSP plots for each site
+syc_site <- function(Site_ID){
+  # For full year
+  syc_metrics_full_TS <- cal_syc_metrics_all_pairs(Site_ID,"full_TS",my_color)
+  # For GS
+  syc_metrics_GS <- cal_syc_metrics_all_pairs(Site_ID,"GS",my_color)
+  # For NGS
+  syc_metrics_NGS <- cal_syc_metrics_all_pairs(Site_ID,"NGS",my_color)
+  
+  # Combine these metrics together
+  syc_metrics_site <- as.data.frame(rbind(syc_metrics_full_TS,
+                                          syc_metrics_GS,
+                                          syc_metrics_NGS))
+  # Add Site ID
+  syc_metrics_site$Site_ID <- Site_ID
+  # Move Site_ID to the first column
+  syc_metrics_site <- syc_metrics_site[, c("Site_ID", setdiff(names(syc_metrics_site), "Site_ID"))]
+  # Add time period: full-TS, GS, or NGS
+  syc_metrics_site$GS <- c("FT","GS","NGS")
+  rownames(syc_metrics_site) <- NULL
+  return(syc_metrics_site)
+}
+
 # This function is to conduct Kruskal-Wallis test to compare syc metrics across group
 # df
 # y_varname: variable name to test

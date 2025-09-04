@@ -9,6 +9,9 @@
 
 # ------ Global ------ 
 library(dplyr)
+library(future)
+library(future.apply)
+library(progressr)
 
 # Input path for TE_df
 TE_df_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/TE_df/"
@@ -17,10 +20,12 @@ Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 # Source functions
 source("03_PN_construction/Synchrony_metrics_functions.R")
 source("05_Visualization/Plotting_functions.R")
-# Output path for LSP plots
+# Output path for TE+LSP plots
 Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/TE_LS_plots/"
 my_color <- brewer.pal(5,"Set1")
 
+# Set parallel session
+plan(multisession,workers = availableCores()-1)
 
 max_lag <- 72 # Maximum lag to consider
 # All variable pairs to consider
@@ -32,33 +37,22 @@ var_comb <- expand.grid(from = var_ls,
                         to = var_ls) %>%
   filter(from != to)
 
-# Loop over all sites
-# Initialize a vector
-syc_metrics_all_sites <- c()
-for(arrayid in 1:nrow(Site_info)){
-  Site_ID <- Site_info$site_id[arrayid]
-  # For full year
-  syc_metrics_full_TS <- cal_syc_metrics_all_pairs(Site_ID,"full_TS",my_color)
-  # For GS
-  syc_metrics_GS <- cal_syc_metrics_all_pairs(Site_ID,"GS",my_color)
-  # For NGS
-  syc_metrics_NGS <- cal_syc_metrics_all_pairs(Site_ID,"NGS",my_color)
-  
-  # Combine these metrics together
-  syc_metrics_site <- as.data.frame(rbind(syc_metrics_full_TS,
-                                          syc_metrics_GS,
-                                          syc_metrics_NGS))
-  # Add Site ID
-  syc_metrics_site$Site_ID <- Site_ID
-  # Move Site_ID to the first column
-  syc_metrics_site <- syc_metrics_site[, c("Site_ID", setdiff(names(syc_metrics_site), "Site_ID"))]
-  # Add time period: full-TS, GS, or NGS
-  syc_metrics_site$GS <- c("FT","GS","NGS")
-  rownames(syc_metrics_site) <- NULL
-  # Add this site to all sites
-  syc_metrics_all_sites <- rbind(syc_metrics_all_sites,syc_metrics_site)
-  print(arrayid)
-}
+# Sites to process
+Site_IDs <- Site_info$site_id
 
-# Output this result df
-#write.csv(syc_metrics_all_sites,"03_PN_construction/Results/Syc_metrics_all_sites.csv")
+# Process for all sites
+with_progress({
+  # Initiate a progressor
+  p <- progressor(along = Site_IDs)
+  syc_metrics_all_sites_ls <- future_lapply(Site_IDs,function(Site_ID){
+    result <- syc_site(Site_ID)
+    p() # Update progress
+    return(result)
+  })
+})
+
+# Combine all output
+syc_metrics_all_sites <- do.call(rbind,syc_metrics_all_sites_ls)
+
+# Output this combined df
+write.csv(syc_metrics_all_sites,"03_PN_construction/Results/Syc_metrics_all_sites.csv")
