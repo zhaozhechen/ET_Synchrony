@@ -1,6 +1,28 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
 # These codes are to analyze synchrony metrics based on TE results
 
+library(lomb) # This is for Lomb-Scargle Periodogram
+
+
+# This function detects the frequency of TE vs lag plot
+# Input: TE_df_tmp, which should be the normalized TE df
+# This function outputs the significant period, and its LS plot
+# If no significant period, returns NA
+get_period <- function(TE_df_tmp,from=1/48,to=1/4,ofac=3,alpha=0.01){
+  TE_df_tmp <- TE_df_tmp %>%
+    select(Lag,TE_norm)
+  # Use Lomb-Scargle Periodogram to detect
+  results <- lsp(TE_df_tmp,from =1/48,to=1/4,ofac =3,type="frequency",alpha=0.01)
+  # Check if there is a statistically significant peak
+  if(!is.null(results$peak.at) && (results$peak > results$sig.level)){
+    # Return LS plot and period
+    out <- list(g = plot(results),results$peak.at[2])
+  }else{
+    out <- list(g = plot(results),NA)
+  }
+  return(out)
+}
+
 # This function calculates synchrony metrics
 # Input include the TE_df
 # Output include:
@@ -16,9 +38,17 @@ cal_syc_metrics <- function(TE_df){
            sig = if_else(!is.na(TE_norm) & !is.na(TEcrit_norm) & (TE_norm > TEcrit_norm),
                          TRUE,FALSE)) %>%
     select(Lag,TE_norm,TEcrit_norm,sig)
+  
+  # Detect periodicity, no need to consider significance of TE values for this
+  # Use Lomb-Scargle Periodogram to detect
+  LS_results <- get_period(TE_df_tmp)
+  # Get LS plot
+  LS_g <- LS_results[1]
+  # Get period
+  period <- LS_results[2]
+
   # Only consider the first 24 hours
   TE_df_24h <- TE_df_tmp[1:24,]
-  
   # if all TE values are insignificant
   if(sum(TE_df_24h$sig,na.rm=TRUE)==0){
     p_TE <- NA
@@ -46,7 +76,15 @@ cal_syc_metrics <- function(TE_df){
     agg_TE <- sum(TE_df_24h$TE_norm[TE_df_24h$sig],na.rm=TRUE)
   }
   
-  return(c(p_TE,p_lag,mem,agg_TE))
+  
+  
+  # Should directly output LS plot, together with TE plot
+  # File name should be passed
+  
+  
+  out <- list(LS_g = LS_g,
+              syc_metrics = c(p_TE,p_lag,mem,agg_TE,period))
+  return(out)
 }
 
 # This function calculates syc metrics for all pairs of variables
@@ -70,10 +108,15 @@ cal_syc_metrics_all_pairs <- function(file_name){
     # Check if this TE_df is valid
     if(nrow(TE_df) < max_lag){
       # All NA
-      syc_metrics <- c(NA,NA,NA,NA)
+      syc_metrics <- c(NA,NA,NA,NA,NA)
     }else{
       # Calculate Synchrony metrics if valid
-      syc_metrics <- cal_syc_metrics(TE_df)
+      syc_results <- cal_syc_metrics(TE_df)
+      
+      
+      
+      
+      syc_metrics <- cal_syc_metrics(TE_df)[2]
     }
     # Name these metrics
     names(syc_metrics) <- paste0(c("p_TE_","p_lag_","mem_","agg_TE_"),TE_df_name)
