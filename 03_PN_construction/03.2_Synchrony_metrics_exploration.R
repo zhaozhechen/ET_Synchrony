@@ -6,6 +6,7 @@
 # -------- Global ----------
 library(dplyr)
 library(tidyr)
+library(sf)
 
 # Input path for Synchrony metrics for all sites
 Syc_metrics_df <- read.csv("03_PN_construction/Results/Syc_metrics_all_sites.csv")
@@ -17,12 +18,20 @@ Site_info_AI <- read.csv("00_Data/Site_summary.csv")
 source("05_Visualization/Plotting_functions.R")
 # Source synchrony functions
 source("03_PN_construction/Synchrony_metrics_functions.R")
+
+# Make CONUS boundary
+# Whole US map
+CONUS <- st_read("00_Data/cb_2018_us_state_20m/cb_2018_us_state_20m.shp")
+# CONUS outer boundary map
+#CONUS <- st_union(CONUS[1][CONUS$STUSPS!="AK"&CONUS$STUSPS!="HI"&CONUS$STUSPS!="PR",])
+CONUS <- CONUS[1][CONUS$STUSPS!="AK"&CONUS$STUSPS!="HI"&CONUS$STUSPS!="PR",]
 # Output path for figures
 Output_path <- "03_PN_construction/Results/"
 
-season_color <- brewer.pal(3,"Set2")
+#season_color <- brewer.pal(3,"Set2")
 
 # --------- Main ---------
+# Preprocessing of synchrony df -------------------
 Syc_metrics_df <- Syc_metrics_df  %>%
   select(-X) %>%
   # Join by Site_info
@@ -46,6 +55,19 @@ Syc_metrics_df <- Syc_metrics_df  %>%
                       levels=c("Hyperarid","Arid","Semiarid","Semihumid","Humid"),
                       ordered = TRUE)
   )
+
+# Make plots for target variable ---------------------
+
+varname <- "p_TE_psi_to_ET"
+palette_name <- "YlOrRd"
+var_title <- "Peak daily TE (%)"
+
+# Make maps of the target variable for FT, GS, and NGS
+map_3 <- season3_syc_map(Syc_metrics_df,varname,palette_name)
+
+
+
+
 
 
 

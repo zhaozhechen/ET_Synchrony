@@ -6,6 +6,7 @@ library(cowplot)
 library(RColorBrewer)
 library(data.table)
 library(gghalves)
+library(stringr)
 
 # Theme for all plots
 my_theme <- theme(
@@ -22,6 +23,25 @@ my_theme <- theme(
   axis.title = element_text(size=14),
   legend.position = "none"
 )
+
+# Theme for maps
+map_theme <- theme(
+  #axis.line=element_line(color="black"),
+  panel.background = element_blank(),
+  panel.border = element_blank(),
+  legend.key = element_blank(),
+  #legend.key.size = unit(6,"cm"),
+  #aspect.ratio = 1/1,
+  #legend.key.size = unit(0.3,'cm'),
+  legend.text = element_text(size=14),
+  plot.title = element_text(size=14),
+  legend.title = element_text(size=14),
+  axis.text = element_blank(),
+  axis.title = element_blank(),
+  axis.ticks = element_blank(),
+  legend.position = "right"
+)
+
 
 # This function is to print pdf and png figure
 # Input is the figure g,title,width, and height
@@ -640,6 +660,95 @@ TE_norm_lag_plot <- function(TE_df_tmp,p_lag,p_TE,mem,m_color){
                color=my_color[3])
   }
   return(g_TE)
+}
+
+# Make maps color coded by the target variable 
+# This function if to make map of target synchrony metrics
+# df: the input df including lat and long, and the target var
+# varname: target variable name
+# palette_name: palette name to use
+# legend_title: legend title
+# g_title: Title
+# color_limits: need an input for the global range for three seasons, so maps of different
+# seasons share the same color bar
+syc_map <- function(df,varname,palette_name,legend_title,g_title,color_limits){
+  g <- ggplot()+
+    geom_sf(data=CONUS,fill="grey",color="black",alpha=0.3)+
+    geom_point(data=df,aes(x=longitude,y=latitude,
+                           color=.data[[varname]]),
+               size=5)+
+    scale_color_distiller(palette = palette_name,direction = 1,
+                          limits = color_limits,
+                          guide = guide_colorbar(
+                            ticks = TRUE,
+                            frame.colour = "black",
+                            ticks.colour = "black"
+                          ))+
+    labs(color = legend_title)+
+    ggtitle(g_title)+
+    map_theme
+  return(g)
+}
+
+# This function makes maps of target variable for three periods: Full TS, GS, and NGS
+# df: Input is the full df, including three periods, lat,long,and target variable
+# varname: target variable name
+# palette_name: palette name to use
+season3_syc_map <- function(df,varname,palette_name){
+  # Extract title name
+  prefix <- str_extract(varname,"^[^_]+(?:_[^_]+)*?(?=_[^_]+_to_)")
+  source_name <- str_extract(varname, "(?<=_)[^_]+(?=_to_)")
+  sink_name <- str_extract(varname, "(?<=_to_)[^_]+$")
+  if(prefix == "p_TE"){
+    prefix_title <- "Peak daily TE"
+    legend_title <- "%"
+  }else if(prefix == "p_lag"){
+    prefix_title <- "Best lag"
+    legend_title <- "hour"
+  }else if(prefix == "mem"){
+    prefix_title <- "Memory"
+    legend_title <- "hour"
+  }else if(prefix == "period"){
+    prefix_title <- "Period"
+    legend_title <- "hour"
+  }
+  # Get title
+  title <- bquote(.(prefix_title)~"("~Delta~.(as.name(source_name))~"\u2192"~Delta~.(as.name(sink_name))~")")
+  
+  # Get color range
+  color_limits <- range(df[[varname]],na.rm=TRUE)
+  
+  # Full Time
+  FT_map <- syc_map(df[df$GS == "FT",],
+                    varname,palette_name,
+                    legend_title = legend_title,
+                    g_title = "Full Time Series (FT)",
+                    color_limits = color_limits)
+  # GS
+  GS_map <- syc_map(df[df$GS == "GS",],
+                    varname,palette_name,
+                    legend_title = legend_title,
+                    g_title = "Growing Season (GS)",
+                    color_limits = color_limits)
+  # NGS
+  NGS_map <- syc_map(df[df$GS == "NGS",],
+                     varname,palette_name,
+                     legend_title = legend_title,
+                     g_title = "Non Growing Season (NGS)",
+                     color_limits = color_limits)
+  # Combine these three maps
+  season3_map <- plot_grid(FT_map,GS_map,NGS_map,nrow=1,
+                           labels = "auto")
+  # Add one overall title
+  season3_map <- plot_grid(
+    ggdraw() + draw_label(
+      title,fontface = "bold",size=16,hjust=0.5
+    ),
+    season3_map,
+    ncol=1,
+    rel_heights = c(0.08,1)
+  )
+  return(season3_map)
 }
 
 # This function is to compare synchrony metrics across groups
