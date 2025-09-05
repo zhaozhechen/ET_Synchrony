@@ -26,9 +26,12 @@ CONUS <- st_read("00_Data/cb_2018_us_state_20m/cb_2018_us_state_20m.shp")
 #CONUS <- st_union(CONUS[1][CONUS$STUSPS!="AK"&CONUS$STUSPS!="HI"&CONUS$STUSPS!="PR",])
 CONUS <- CONUS[1][CONUS$STUSPS!="AK"&CONUS$STUSPS!="HI"&CONUS$STUSPS!="PR",]
 # Output path for figures
-Output_path <- "03_PN_construction/Results/"
+Output_path <- "03_PN_construction/Results/Syc_metrics_summary/"
 
+# Colors for the three seasons
 season_color <- brewer.pal(3,"Set2")
+# Palette for making maps
+palette_name <- "YlOrRd"
 
 # --------- Main ---------
 # Preprocessing of synchrony df -------------------
@@ -41,7 +44,8 @@ Syc_metrics_df <- Syc_metrics_df  %>%
   left_join(Site_info_AI %>% select(Site_ID,AI),by="Site_ID") %>%
   mutate(Soil_type = as.factor(Soil_type),
          IGBP_veg = as.factor(IGBP_veg),
-         GS = as.factor(GS)) %>%
+         GS = as.factor(GS),
+         Koppen_clim_class = as.factor(Koppen_clim_class)) %>%
   # Classify AI into five gradients
   mutate(
     AI_level = case_when(
@@ -58,16 +62,13 @@ Syc_metrics_df <- Syc_metrics_df  %>%
 
 # Make plots for target variable ---------------------
 
-varname <- "p_TE_psi_to_ET"
-palette_name <- "YlOrRd"
-var_title <- "Peak daily TE (%)"
+# List of syc metrics to plot
+varname_ls <- names(Syc_metrics_df)[2:61]
 
-# Make maps of the target variable for FT, GS, and NGS
-map_3 <- season3_syc_map(Syc_metrics_df,varname,palette_name)
-
-
-group_name <- "AI_level"
-my_color <- season_color[1]
+# Loop over each variable
+for(varname in varname_ls){
+  plot_syc_all(Syc_metrics_df,varname,palette_name)  
+}
 
 
 
@@ -78,133 +79,5 @@ my_color <- season_color[1]
 
 
 
-Hist_Syc_p_value(Syc_metrics_df,y_varname = "p_TE_psi_to_ET",group_name = "GS",y_title = "TEmax (%)",
-                 x_labels = c("GS","Non-GS"),
-                 title = bquote(Delta~psi~"\u2192"~Delta~ET),
-                 my_color = season_color,y_lim = c(0,20))
-
-
-
-
-
-
-# Comparison of Synchrony metrics from psi, VPD, and TA to ET =================
-# peak TE
-g_p_TE_psi_to_ET <- Hist_Syc_p_value(Syc_metrics_df,y_varname = "p_TE_psi_to_ET",group_name = "GS",y_title = "TEmax (%)",
-                             x_labels = c("GS","Non-GS"),
-                             title = bquote(Delta~psi~"\u2192"~Delta~ET),
-                             my_color = season_color,y_lim = c(0,20))
-g_p_TE_VPD_to_ET <- Hist_Syc_p_value(Syc_metrics_df,y_varname = "p_TE_VPD_to_ET",group_name = "GS",y_title = "TEmax (%)",
-                             x_labels = c("GS","Non-GS"),
-                             title = bquote(Delta~VPD~"\u2192"~Delta~ET),
-                             my_color = season_color,y_lim = c(0,20))
-g_p_TE_TA_to_ET <- Hist_Syc_p_value(Syc_metrics_df,y_varname = "p_TE_TA_to_ET",group_name = "GS",y_title = "TEmax (%)",
-                            x_labels = c("GS","Non-GS"),
-                            title = bquote(Delta~TA~"\u2192"~Delta~ET),
-                            my_color = season_color,y_lim = c(0,20))
-# Best lag
-g_p_lag_psi_to_ET <- Hist_Syc_p_value(Syc_metrics_df,y_varname = "p_lag_psi_to_ET",group_name = "GS",y_title = "Lag (Hours)",
-                              x_labels = c("GS","Non-GS"),
-                              title = bquote(Delta~psi~"\u2192"~Delta~ET),
-                              my_color = season_color,y_lim = c(0,24))
-g_p_lag_VPD_to_ET <- Hist_Syc_p_value(Syc_metrics_df,y_varname = "p_lag_VPD_to_ET",group_name = "GS",y_title = "Lag (Hours)",
-                              x_labels = c("GS","Non-GS"),
-                              title = bquote(Delta~VPD~"\u2192"~Delta~ET),
-                              my_color = season_color,y_lim = c(0,24))
-g_p_lag_TA_to_ET <- Hist_Syc_p_value(Syc_metrics_df,y_varname = "p_lag_TA_to_ET",group_name = "GS",y_title = "Lag (Hours)",
-                             x_labels = c("GS","Non-GS"),
-                             title = bquote(Delta~TA~"\u2192"~Delta~ET),
-                             my_color = season_color,y_lim = c(0,24))
-# Memory
-g_mem_psi_to_ET <- Hist_Syc_p_value(Syc_metrics_df,y_varname = "mem_psi_to_ET",group_name = "GS",y_title = "Memory (Hours)",
-                            x_labels = c("GS","Non-GS"),
-                            title = bquote(Delta~psi~"\u2192"~Delta~ET),
-                            my_color = season_color,y_lim = c(0,72))
-g_mem_VPD_to_ET <- Hist_Syc_p_value(Syc_metrics_df,y_varname = "mem_VPD_to_ET",group_name = "GS",y_title = "Memory (Hours)",
-                            x_labels = c("GS","Non-GS"),
-                            title = bquote(Delta~VPD~"\u2192"~Delta~ET),
-                            my_color = season_color,y_lim = c(0,72))
-g_mem_TA_to_ET <- Hist_Syc_p_value(Syc_metrics_df,y_varname = "mem_TA_to_ET",group_name = "GS",y_title = "Memory (Hours)",
-                           x_labels = c("GS","Non-GS"),
-                           title = bquote(Delta~TA~"\u2192"~Delta~ET),
-                           my_color = season_color,y_lim = c(0,72))
-
-# Combine all these three plots
-g_syc <- plot_grid(g_p_TE_psi_to_ET,g_p_TE_VPD_to_ET,g_p_TE_TA_to_ET,
-                    g_p_lag_psi_to_ET,g_p_lag_VPD_to_ET,g_p_lag_TA_to_ET,
-                    g_mem_psi_to_ET,g_mem_VPD_to_ET,g_mem_TA_to_ET,
-                    nrow = 3,
-                    align = "hv",
-                    labels = "auto")
-print_g(g_syc,"Syc_metrics_season",
-        10,10)
-
-# Compare synchrony metrics between variables pairs ============================
-# Peak TE
-g_p_TE_psi_vs_VPD <- scatter_vars(df = Syc_metrics_df,
-                                  "p_TE_psi_to_ET","p_TE_VPD_to_ET",
-                                  "GS",
-                                  xtitle = bquote(TEmax~"("~Delta~psi~"\u2192"~Delta~ET~")"),
-                                  ytitle = bquote(TEmax~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
-                                  my_color = season_color)
-g_p_TE_psi_vs_TA <- scatter_vars(df = Syc_metrics_df,
-                                 "p_TE_psi_to_ET","p_TE_TA_to_ET",
-                                 "GS",
-                                 xtitle = bquote(TEmax~"("~Delta~psi~"\u2192"~Delta~ET~")"),
-                                 ytitle = bquote(TEmax~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
-                                 my_color = season_color)
-g_p_TE_VPD_vs_TA <- scatter_vars(df = Syc_metrics_df,
-                                 "p_TE_VPD_to_ET","p_TE_TA_to_ET",
-                                 "GS",
-                                 xtitle = bquote(TEmax~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
-                                 ytitle = bquote(TEmax~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
-                                 my_color = season_color)
-# Lag
-g_p_lag_psi_vs_VPD <- scatter_vars(df = Syc_metrics_df,
-                                   "p_lag_psi_to_ET","p_lag_VPD_to_ET",
-                                   "GS",
-                                   xtitle = bquote(Lag~"("~Delta~psi~"\u2192"~Delta~ET~")"),
-                                   ytitle = bquote(Lag~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
-                                   my_color = season_color)
-g_p_lag_psi_vs_TA <- scatter_vars(df = Syc_metrics_df,
-                                  "p_lag_psi_to_ET","p_lag_TA_to_ET",
-                                  "GS",
-                                  xtitle = bquote(Lag~"("~Delta~psi~"\u2192"~Delta~ET~")"),
-                                  ytitle = bquote(Lag~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
-                                  my_color = season_color)
-g_p_lag_VPD_vs_TA <- scatter_vars(df = Syc_metrics_df,
-                                  "p_lag_VPD_to_ET","p_lag_TA_to_ET",
-                                  "GS",
-                                  xtitle = bquote(Lag~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
-                                  ytitle = bquote(Lag~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
-                                  my_color = season_color)
-# Memory
-g_mem_psi_vs_VPD <- scatter_vars(df = Syc_metrics_df,
-                                 "mem_psi_to_ET","mem_VPD_to_ET",
-                                 "GS",
-                                 xtitle = bquote(Memory~"("~Delta~psi~"\u2192"~Delta~ET~")"),
-                                 ytitle = bquote(Memory~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
-                                 my_color = season_color)
-g_mem_psi_vs_TA <- scatter_vars(df = Syc_metrics_df,
-                                "mem_psi_to_ET","mem_TA_to_ET",
-                                "GS",
-                                xtitle = bquote(Memory~"("~Delta~psi~"\u2192"~Delta~ET~")"),
-                                ytitle = bquote(Memory~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
-                                my_color = season_color)
-g_mem_VPD_vs_TA <- scatter_vars(df = Syc_metrics_df,
-                                "mem_VPD_to_ET","mem_TA_to_ET",
-                                "GS",
-                                xtitle = bquote(Memory~"("~Delta~VPD~"\u2192"~Delta~ET~")"),
-                                ytitle = bquote(Memory~"("~Delta~'T'[air]~"\u2192"~Delta~ET~")"),
-                                my_color = season_color)
-# Combine these plots
-g_syc_var <- plot_grid(g_p_TE_psi_vs_VPD,g_p_TE_psi_vs_TA,g_p_TE_VPD_vs_TA,
-                       g_p_lag_psi_vs_VPD,g_p_lag_psi_vs_TA,g_p_lag_VPD_vs_TA,
-                       g_mem_psi_vs_VPD,g_mem_psi_vs_TA,g_mem_VPD_vs_TA,
-                       nrow = 3,
-                       align = "hv",
-                       labels = "auto")
-print_g(g_syc_var,"Syc_metrics_variables",
-        10,10)
 
 

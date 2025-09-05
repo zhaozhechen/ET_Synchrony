@@ -690,11 +690,8 @@ syc_map <- function(df,varname,palette_name,legend_title,g_title,color_limits){
   return(g)
 }
 
-# This function makes maps of target variable for three periods: Full TS, GS, and NGS
-# df: Input is the full df, including three periods, lat,long,and target variable
-# varname: target variable name
-# palette_name: palette name to use
-season3_syc_map <- function(df,varname,palette_name){
+# This function is to get title and legend from the variable name
+get_title<- function(varname){
   # Extract title name
   prefix <- str_extract(varname,"^[^_]+(?:_[^_]+)*?(?=_[^_]+_to_)")
   source_name <- str_extract(varname, "(?<=_)[^_]+(?=_to_)")
@@ -711,10 +708,21 @@ season3_syc_map <- function(df,varname,palette_name){
   }else if(prefix == "period"){
     prefix_title <- "Period"
     legend_title <- "hour"
+  }else if(prefix == "agg_TE"){
+    prefix_title <- "Aggregated daily TE"
+    legend_title <- "%"
   }
   # Get title
   title <- bquote(.(prefix_title)~"("~Delta~.(as.name(source_name))~"\u2192"~Delta~.(as.name(sink_name))~")")
-  
+  return(list(legend_title,title))
+}
+
+
+# This function makes maps of target variable for three periods: Full TS, GS, and NGS
+# df: Input is the full df, including three periods, lat,long,and target variable
+# varname: target variable name
+# palette_name: palette name to use
+season3_syc_map <- function(df,varname,palette_name,legend_title){
   # Get color range
   color_limits <- range(df[[varname]],na.rm=TRUE)
   
@@ -736,29 +744,19 @@ season3_syc_map <- function(df,varname,palette_name){
                      legend_title = legend_title,
                      g_title = "Non Growing Season (NGS)",
                      color_limits = color_limits)
-  # Combine these three maps
-  season3_map <- plot_grid(FT_map,GS_map,NGS_map,nrow=1,
-                           labels = "auto")
-  # Add one overall title
-  season3_map <- plot_grid(
-    ggdraw() + draw_label(
-      title,fontface = "bold",size=16,hjust=0.5
-    ),
-    season3_map,
-    ncol=1,
-    rel_heights = c(0.08,1)
-  )
-  return(season3_map)
+ 
+  return(list(FT_map,GS_map,NGS_map))
 }
 
 # This function is to make histogram of target variable
-plot_syc_hist <- function(df,varname,my_color){
+plot_syc_hist <- function(df,varname,my_color,x_title,g_title){
   g <- ggplot(df,aes(x=.data[[varname]]))+
     geom_histogram(bins=10,
                    color="black",
                    fill=my_color)+
     my_theme+
-    labs(x=varname)
+    labs(x=x_title)+
+    ggtitle(g_title)
   return(g)
 }
 
@@ -769,7 +767,17 @@ plot_syc_hist <- function(df,varname,my_color){
 # group_name: groups to be compared
 # y_title
 # my_color: colors for the group
-Hist_Syc <- function(df,varname,group_name,y_title,my_color){
+Hist_Syc <- function(df,varname,group_name,y_title,my_color,g_title){
+  df <- df[!is.na(df[[varname]]),]
+  # Filter out groups with fewer than 2 data points
+  df <- df %>%
+    group_by(.data[[group_name]]) %>%
+    dplyr::filter(n() >= 2) %>%
+    ungroup()
+  
+  # Reset factor levels to match the filtered data
+  df[[group_name]] <- factor(df[[group_name]])
+  
   g <- ggplot(data=df,aes(x=.data[[group_name]],
                           y=.data[[varname]]))+
     geom_half_violin(fill=my_color,alpha=0.5,color=NA)+
@@ -780,16 +788,106 @@ Hist_Syc <- function(df,varname,group_name,y_title,my_color){
                 color=my_color)+
     my_theme+
     labs(x="",y=y_title)+
-    coord_flip()
+    coord_flip()+
+    ggtitle(g_title)
   return(g)
 }
 
+# This function is to make distribution and group comparison plots 
+# for the selected time period for the target metric
+# df: full df of three periods
+# GS: FT, GS, or NGS
+# g_title: title for the first plol, could be "Full Time Series", "Growing season", "Non Growing Season"
+# my_color: color for this season
+# legend_title: legend for the x axis
+Hist_season1 <- function(df,GS,g_title,my_color,legend_title){
+  df <- Syc_metrics_df[Syc_metrics_df$GS == GS,]
+  
+  # Make histogram of target variable
+  g_hist <- plot_syc_hist(df,varname,my_color,legend_title,g_title)
+  
+  # Across AI
+  g_AI <- Hist_Syc(df,varname,"AI_level",legend_title,my_color,"AI level")
+  
+  # Across Soil Type
+  g_Soil <- Hist_Syc(df,varname,"Soil_type",legend_title,my_color,"Soil type")
+  
+  # Across Climate
+  g_Clm <- Hist_Syc(df,varname,"Koppen_clim_class",legend_title,my_color,"Climate")
+  
+  # Across IGBP
+  g_IGBP <- Hist_Syc(df,varname,"IGBP_veg",legend_title,my_color,"IGBP")  
+  
+  return(list(g_hist,g_AI,g_Soil,g_Clm,g_IGBP))
+}
+
+# This function is to make summary plots of each target metric
+# Input include:
+# Syc_metrics_df: the df including all synchrony metrics and required explanatory variables
+# varname: target variable to plot
+# palette_name: name of the palette for making maps
+plot_syc_all <- function(Syc_metrics_df,varname,palette_name){
+  # Get legend and title
+  legend_title <- get_title(varname)[[1]]
+  g_title <- get_title(varname)[[2]]
+  
+  # Make maps of the target variable for FT, GS, and NGS
+  map_seasons <- season3_syc_map(Syc_metrics_df,varname,palette_name,legend_title)
+  
+  # Compare target metrics across three seasons
+  g_syc_seasons <- ggplot(data=Syc_metrics_df,
+                          aes(x=GS,y=.data[[varname]],
+                              color=GS,fill=GS))+
+    geom_half_violin(alpha=0.5,color=NA)+
+    geom_boxplot(width=0.1,color="black",outlier.color = NA)+
+    geom_jitter(aes(x = as.numeric(GS)+0.2),
+                position = position_jitter(width=0.1),
+                alpha=0.7)+
+    my_theme+
+    scale_fill_manual(values = season_color[c(3,1,2)])+
+    scale_color_manual(values = season_color[c(3,1,2)])+
+    labs(x="",y=legend_title)
+  
+  # Combine three maps + metrics across seasons
+  g_row1 <- plot_grid(map_seasons[[1]],map_seasons[[2]],map_seasons[[3]],g_syc_seasons,nrow=1,
+                      labels = "auto")
+  
+  # Add one overall title
+  g_row1 <- plot_grid(
+    ggdraw() + draw_label(
+      g_title,fontface = "bold",size=16,hjust=0.5
+    ),
+    g_row1,
+    ncol=1,
+    rel_heights = c(0.08,1)
+  )
+  
+  # FT histograms
+  FT_hist_all <- Hist_season1(Syc_metrics_df,"FT","Full Time Series",season_color[3],legend_title)
+  # GS histograms
+  GS_hist_all <- Hist_season1(Syc_metrics_df,"GS","Growing Season",season_color[1],legend_title)
+  # NGS histograms
+  NGS_hist_all <- Hist_season1(Syc_metrics_df,"NGS","Non Growing Season",season_color[2],legend_title)
+  # Combine these 15 plots
+  g_row2 <- plot_grid(plotlist = c(FT_hist_all,GS_hist_all,NGS_hist_all),
+                      nrow=3,
+                      labels = letters[5:19])
+  
+  # Combine row1 and row2
+  g_all <- plot_grid(g_row1,g_row2,nrow=2,
+                     rel_heights = c(1,3))
+  # Output this figure
+  print_g(g_all,paste0(varname,"_all"),
+          20,16)
+}
+
+
 # This function adds p-value to the Histgram
-Hist_Syc_p_value <- function(df,y_varname,group_name,y_title,x_labels,title,my_color,y_lim,group1,group2){
+Hist_Syc_p_value <- function(df,varname,group_name,y_title,my_color){
   # Make plot
-  g <- Hist_Syc(df,y_varname,group_name,y_title,x_labels,title,my_color,y_lim)
+  g <- Hist_Syc(df,varname,group_name,y_title,my_color)
   # Get p value
-  p_value <- syc_compare(df,y_varname,group_name)
+  p_value <- syc_compare(df,varname,group_name)
   # Add p value to the plot
   p_value_text <- paste0("p = ",p_value)
   g <- ggdraw()+
