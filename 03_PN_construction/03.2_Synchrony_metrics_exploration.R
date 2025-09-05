@@ -28,7 +28,7 @@ CONUS <- CONUS[1][CONUS$STUSPS!="AK"&CONUS$STUSPS!="HI"&CONUS$STUSPS!="PR",]
 # Output path for figures
 Output_path <- "03_PN_construction/Results/"
 
-#season_color <- brewer.pal(3,"Set2")
+season_color <- brewer.pal(3,"Set2")
 
 # --------- Main ---------
 # Preprocessing of synchrony df -------------------
@@ -66,8 +66,22 @@ var_title <- "Peak daily TE (%)"
 map_3 <- season3_syc_map(Syc_metrics_df,varname,palette_name)
 
 
+group_name <- "AI_level"
+my_color <- season_color[1]
 
 
+
+
+
+
+
+
+
+
+Hist_Syc_p_value(Syc_metrics_df,y_varname = "p_TE_psi_to_ET",group_name = "GS",y_title = "TEmax (%)",
+                 x_labels = c("GS","Non-GS"),
+                 title = bquote(Delta~psi~"\u2192"~Delta~ET),
+                 my_color = season_color,y_lim = c(0,20))
 
 
 

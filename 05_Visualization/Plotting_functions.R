@@ -751,33 +751,36 @@ season3_syc_map <- function(df,varname,palette_name){
   return(season3_map)
 }
 
+# This function is to make histogram of target variable
+plot_syc_hist <- function(df,varname,my_color){
+  g <- ggplot(df,aes(x=.data[[varname]]))+
+    geom_histogram(bins=10,
+                   color="black",
+                   fill=my_color)+
+    my_theme+
+    labs(x=varname)
+  return(g)
+}
+
 # This function is to compare synchrony metrics across groups
 # Input include:
 # df: input df containing the target variables
-# y_varname: synchrony metric to be compared
+# varname: synchrony metric to be compared
 # group_name: groups to be compared
 # y_title
-# x_labels: a vector of names for the groups
-# title: title of the plot
 # my_color: colors for the group
-# y_lim: range of y axis
-Hist_Syc <- function(df,y_varname,group_name,y_title,x_labels,title,my_color,y_lim){
+Hist_Syc <- function(df,varname,group_name,y_title,my_color){
   g <- ggplot(data=df,aes(x=.data[[group_name]],
-                          y=.data[[y_varname]],
-                          fill=.data[[group_name]],
-                          color=.data[[group_name]]))+
-    geom_half_violin(alpha=0.5,color=NA)+
+                          y=.data[[varname]]))+
+    geom_half_violin(fill=my_color,alpha=0.5,color=NA)+
     geom_boxplot(width=0.1,color="black",outlier.color = NA)+
     geom_jitter(aes(x = as.numeric(.data[[group_name]])+0.2),
                 position = position_jitter(width=0.1),
-                alpha=0.7)+
+                alpha=0.7,
+                color=my_color)+
     my_theme+
     labs(x="",y=y_title)+
-    scale_x_discrete(labels = x_labels)+
-    ggtitle(title)+
-    scale_fill_manual(values = my_color)+
-    scale_color_manual(values = my_color)+
-    ylim(y_lim)
+    coord_flip()
   return(g)
 }
 
