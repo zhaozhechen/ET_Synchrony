@@ -72,6 +72,7 @@ cal_syc_metrics <- function(TE_df,m_color,TE_g_title){
                 color=m_color[2])+
       my_theme
   }else{
+    # Daily maximum TE value
     p_TE <- max(TE_df_24h$TE_norm[TE_df_24h$sig],na.rm=TRUE)
     # Get corresponding lag
     p_lag <- TE_df_24h$Lag[which(TE_df_24h$TE_norm == p_TE)[1]]

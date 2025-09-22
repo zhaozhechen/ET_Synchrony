@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
-# Date: 2025.9.4
+# Date: 2025.9.22
 
 # This code is to extract Synchrony metrics (peak TE, memory, lag, aggTE)
 # Peak daily TE: maximum significant TE normalized by Shannon entropy of the sink within the first 24 hours
@@ -20,10 +20,10 @@ TE_df_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_
 # Updated site info
 Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 # Source functions
-source("03_PN_construction/Synchrony_metrics_functions.R")
+source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 source("05_Visualization/Plotting_functions.R")
 # Output path for TE+LSP plots
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/TE_LS_plots/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Lag_plots_allyear_3mem/"
 my_color <- brewer.pal(5,"Set1")
 
 # Set parallel session
@@ -41,6 +41,39 @@ var_comb <- expand.grid(from = var_ls,
 
 # Sites to process
 Site_IDs <- Site_info$site_id
+
+
+
+# Test below ============
+Site_ID <- Site_IDs[1]
+type <- "full_TS"
+
+i<-1
+
+
+# Get file name for the TE_df_ls
+file_name <- paste0("TE_df_ls_",type,"_",Site_ID,".rds")
+# Read in TE_df_ls
+TE_df_ls <- readRDS(paste0(TE_df_path,file_name))
+
+
+
+# Source and sink name
+source_name <- as.character(var_comb$from[i])
+sink_name <- as.character(var_comb$to[i])
+# Get TE_df for this pair
+TE_df_name <- paste0(source_name,"_to_",sink_name)
+TE_df <- TE_df_ls[[TE_df_name]]
+
+cal_syc_metrics(TE_df)
+
+
+
+# ====================
+
+
+
+
 
 # Process for all sites
 with_progress({
