@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
-# Date: 2025.9.4
+# Date: 2025.9.22
 
 # This code is to explore and analyze synchrony metrics
 
@@ -7,17 +7,19 @@
 library(dplyr)
 library(tidyr)
 library(sf)
+library(GGally)
+library(patchwork)
 
 # Input path for Synchrony metrics for all sites
-Syc_metrics_df <- read.csv("03_PN_construction/Results/Syc_metrics_all_sites.csv")
+Syc_metrics_df <- read.csv("03_PN_construction/Results/Syc_metrics_all_sites_4mem.csv")
 # Updated site info
 Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 # Input path for Aridity index
-Site_info_AI <- read.csv("00_Data/Site_summary.csv")
+#Site_info_AI <- read.csv("00_Data/Site_summary.csv")
 # Source plotting functions
 source("05_Visualization/Plotting_functions.R")
-# Source synchrony functions
-source("03_PN_construction/Synchrony_metrics_functions.R")
+# Source synchrony metrics functions
+source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 
 # Make CONUS boundary
 # Whole US map
@@ -26,14 +28,80 @@ CONUS <- st_read("00_Data/cb_2018_us_state_20m/cb_2018_us_state_20m.shp")
 #CONUS <- st_union(CONUS[1][CONUS$STUSPS!="AK"&CONUS$STUSPS!="HI"&CONUS$STUSPS!="PR",])
 CONUS <- CONUS[1][CONUS$STUSPS!="AK"&CONUS$STUSPS!="HI"&CONUS$STUSPS!="PR",]
 # Output path for figures
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_summary/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/"
 
 # Colors for the three seasons
 season_color <- brewer.pal(3,"Set2")
 # Palette for making maps
 palette_name <- "YlOrRd"
 
+# All variable pairs to consider
+var_ls <- c("ET","psi","VPD","TA")
+# All seasons
+seasons <- c("FT","GS","NGS")
+
 # --------- Main ---------
+Syc_metrics_df <- Syc_metrics_df  %>%
+  select(-X) 
+
+# All variable combinations
+var_comb <- expand.grid(from = var_ls,
+                        to = var_ls) %>%
+  filter(from != to)
+
+# Compare 4 memory options ========
+# Loop each season and variable pair
+for(i in 1:nrow(var_comb)){
+  source_name <- var_comb$from[i]
+  sink_name <- var_comb$to[i]
+  # Get memory columns names
+  mem_names <- paste0(c("mem1","mem3","mem4","mem5"),"_",source_name,"_to_",sink_name)
+  # Initiliate a list to store three seasons
+  g_seasons <- list()
+  for(season in seasons){
+    # Get a subset of these memory columns for this season
+    df_tmp <- Syc_metrics_df %>%
+      filter(GS == season) %>%
+      select(Site_ID,all_of(mem_names))
+    # Rename the columns
+    names(df_tmp) <- c("Site_ID","Mem1","Mem3","Mem4","Mem5")
+    # Pivot to long data
+    df_tmp_long <- df_tmp %>%
+      pivot_longer(cols = starts_with("Mem"),
+                   names_to = "Metric",
+                   values_to = "value")
+    # Create scatter plot matrix
+    g_matrix <- ggpairs(df_tmp[,c(2:5)])+
+      ggtitle(paste0("Memory comparison (",source_name," → ",sink_name,"; ",season,")"))+
+      my_theme
+    g_seasons[[season]] <- grob_to_ggplot(g_matrix)
+  }
+  
+  
+  # Output plots for this variable pair
+  g <- wrap_plots(g_seasons,nrow=1)
+  print_g(g,paste0("Mem4_comparison/Mem4_",source_name,"_to_",sink_name),
+          15,5)
+  
+  message(i)
+}
+
+
+
+# Only get memory columns
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Preprocessing of synchrony df -------------------
 Syc_metrics_df <- Syc_metrics_df  %>%
   select(-X) %>%

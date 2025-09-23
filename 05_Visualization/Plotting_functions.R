@@ -931,3 +931,10 @@ scatter_vars <- function(df,varname1,varname2,group_name,xtitle,ytitle,my_color)
     scale_color_manual(values=my_color)
   return(g)
 }
+
+# Dummy function to wrap a g_matrix into a ggplot object
+grob_to_ggplot <- function(g_matrix) {
+  grob_obj <- grid::grid.grabExpr(print(g_matrix))
+  g <- ggplot() + annotation_custom(grob_obj)
+  return(g)
+}
