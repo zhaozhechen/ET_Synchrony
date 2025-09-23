@@ -89,6 +89,8 @@ for(i in 1:nrow(var_comb)){
 
 
 
+# Test synchrony metrics vs AI and ET ---------------------
+
 
 
 

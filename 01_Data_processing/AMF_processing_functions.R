@@ -265,6 +265,14 @@ replace_dates <- function(df,target_site,donor_sites){
 }
 
 
+# Calculates Delta in PM function for PET calculation
+PM_delta <- function(temp){
+  tc <- temp - 273.15
+  es <- 0.6108*exp(17.27*tc/(tc+237.3))*1000 # Unit Pa
+  Delta <- 4098*es/(237.3+tc)^2 # Unit Pa/K
+  return(Delta)
+}
+
 
 
 
