@@ -3,10 +3,15 @@
 
 # This code is to extract Synchrony metrics (peak TE, memory, lag, aggTE)
 # Peak daily TE: maximum significant TE normalized by Shannon entropy of the sink within the first 24 hours
-# Memory: the persistence of influence after the maximum strength of synchrony, defined as the interval from the lag of maximum TE to the first subsequent lag where TE falls below the significance threshold.
 # Lag: best lag corresponding to peak TE
 # Daily aggregate TE: The total magnitude/contribution of predictive influence distributed across 24 hours, defined as the sum of TE for the set of lags with significant TE within 24 hours.
-# Also output normalized TE vs lag + Lomb-Scargle periodogram for all sites, for Full TS, GS, and NGS
+# Memory: Output 4 memory options (Option 2 was not calculated):
+# Option 1: From lag 0 to first non-significant lag
+# Option 2: Width of TE peak (only significant). Not calculated
+# Option 3: From peak to first non-significant lag after the peak
+# Option 4: Total significant duration (cumulative hours)
+# Option 5: From lag 0 to first lag after the peak
+
 # Note: Focus on full TS, GS, and NGS for now. No years results included
 
 # ------ Global ------ 
@@ -23,9 +28,6 @@ Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 source("05_Visualization/Plotting_functions.R")
 
-# Set parallel session
-plan(multisession,workers = availableCores()-1)
-
 max_lag <- 72 # Maximum lag to consider
 # All variable pairs to consider
 var_ls <- c("ET","psi","VPD","TA")
@@ -39,21 +41,16 @@ var_comb <- expand.grid(from = var_ls,
 # Sites to process
 Site_IDs <- Site_info$site_id
 
+syc_metrics_all_sites_df <- c()
 # Process for all sites
-with_progress({
-  # Initiate a progressor
-  p <- progressor(along = Site_IDs)
-  syc_metrics_all_sites_ls <- future_lapply(Site_IDs,function(Site_ID){
-    result <- syc_site(Site_ID,var_comb)
-    p() # Update progress
-    return(result)
-  })
-})
-
-# Combine all output
-syc_metrics_all_sites <- do.call(rbind,syc_metrics_all_sites_ls)
+for(i in 1:length(Site_IDs)){
+  Site_ID <- Site_IDs[i]
+  syc_metrics_all_sites <- syc_site(Site_ID,var_comb)
+  syc_metrics_all_sites_df <- rbind(syc_metrics_all_sites_df,syc_metrics_all_sites)
+  message(i)
+}
 
 # Output this combined df
-write.csv(syc_metrics_all_sites,"03_PN_construction/Results/Syc_metrics_all_sites_4mem.csv")
+write.csv(syc_metrics_all_sites_df,"03_PN_construction/Results/Syc_metrics_all_sites_4mem.csv")
 
 

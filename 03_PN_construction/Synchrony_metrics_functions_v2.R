@@ -84,6 +84,7 @@ cal_syc_metrics_all_pairs <- function(Site_ID,type,var_comb){
     if(nrow(TE_df) < max_lag){
       # All NA
       syc_metrics <- rep(NA,7)
+      names(syc_metrics) <- c("pTE","plag","aggTE","mem1","mem3","mem4","mem5")
     }else{
       # Calculate Synchrony metrics if valid
       syc_metrics <- cal_syc_metrics(TE_df)
@@ -106,16 +107,14 @@ syc_site <- function(Site_ID,var_comb){
   syc_metrics_GS <- cal_syc_metrics_all_pairs(Site_ID,"GS",var_comb)
   # For NGS
   syc_metrics_NGS <- cal_syc_metrics_all_pairs(Site_ID,"NGS",var_comb)
-  # Combine these metrics together
-  syc_metrics_site <- as.data.frame(rbind(syc_metrics_full_TS,
-                                          syc_metrics_GS,
-                                          syc_metrics_NGS))
-  # Add Site ID
-  syc_metrics_site$Site_ID <- Site_ID
-  # Move Site_ID to the first column
-  syc_metrics_site <- syc_metrics_site[, c("Site_ID", setdiff(names(syc_metrics_site), "Site_ID"))]
-  # Add time period: full-TS, GS, or NGS
-  syc_metrics_site$GS <- c("FT","GS","NGS")
+  
+  # Add Site_ID and GS
+  syc_metrics_site <- data.frame(Site_ID = rep(Site_ID,3),
+                                 GS = c("FT","GS","NGS"),
+                                 rbind(syc_metrics_full_TS,
+                                       syc_metrics_GS,
+                                       syc_metrics_NGS))
+  
   rownames(syc_metrics_site) <- NULL
   return(syc_metrics_site)
 }
