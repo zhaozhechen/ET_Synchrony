@@ -1,8 +1,14 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
 # These codes are to analyze synchrony metrics based on TE results
 
-
-
+# This function calculates synchrony metrics
+# Input include:
+# TE_df: full TE_df from the source to the sink
+# Output Synchrony metrics including
+# p_TE: peak daily TE
+# p_lag: lag corresponding to peak TE
+# agg_TE: daily aggregated TE in the first 24 hours
+# memory: four options (mem1,mem3,mem4,and,mem5). mem2 is not calculated
 cal_syc_metrics <- function(TE_df){
   # Normalize TE and TEcrit
   TE_df_tmp <- TE_df %>%
@@ -49,8 +55,72 @@ cal_syc_metrics <- function(TE_df){
     # Combine all synchrony metrics -----------
     syc_metrics <- c(p_TE,p_lag,agg_TE,mem1,mem3,mem4,mem5)
   }
-  names(syc_metrics) <- c("p_TE","p_lag","agg_TE","mem1","mem3","mem4","mem5")
+  names(syc_metrics) <- c("pTE","plag","aggTE","mem1","mem3","mem4","mem5")
   return(syc_metrics)
 }
+
+# This function calculates syc metrics for all pairs of variables
+# For the selected time period at this site
+# Input include:
+# Site_ID: Site_ID for the site
+# type: should be a character: "full_TS","GS", or "NGS"
+# Output: a vector of length 84, for syc metrics for all pairs of variables
+cal_syc_metrics_all_pairs <- function(Site_ID,type,var_comb){
+  # Get file name for the TE_df_ls
+  file_name <- paste0("TE_df_ls_",type,"_",Site_ID,".rds")
+  # Read in TE_df_ls
+  TE_df_ls <- readRDS(paste0(TE_df_path,file_name))
+  # Loop over each variable pair
+  # Initialize a vector to store all output syc metrics for all pairs
+  syc_metrics_all <- c()
+  for(i in 1:nrow(var_comb)){
+    # Source and sink name
+    source_name <- as.character(var_comb$from[i])
+    sink_name <- as.character(var_comb$to[i])
+    # Get TE_df for this pair
+    TE_df_name <- paste0(source_name,"_to_",sink_name)
+    TE_df <- TE_df_ls[[TE_df_name]]
+    # Check if this TE_df is valid
+    if(nrow(TE_df) < max_lag){
+      # All NA
+      syc_metrics <- rep(NA,7)
+    }else{
+      # Calculate Synchrony metrics if valid
+      syc_metrics <- cal_syc_metrics(TE_df)
+    }
+    # Name these metrics
+    names(syc_metrics) <- paste0(names(syc_metrics),"_",TE_df_name)
+    # Combine all syc metrics
+    syc_metrics_all <- c(syc_metrics_all,syc_metrics)
+  }
+  return(syc_metrics_all)
+}
+
+# This function extracts synchrony metrics for each site, 
+# for full_TS, GS, and NGS
+# Output a df of three rows
+syc_site <- function(Site_ID,var_comb){
+  # For full year
+  syc_metrics_full_TS <- cal_syc_metrics_all_pairs(Site_ID,"full_TS",var_comb)
+  # For GS
+  syc_metrics_GS <- cal_syc_metrics_all_pairs(Site_ID,"GS",var_comb)
+  # For NGS
+  syc_metrics_NGS <- cal_syc_metrics_all_pairs(Site_ID,"NGS",var_comb)
+  # Combine these metrics together
+  syc_metrics_site <- as.data.frame(rbind(syc_metrics_full_TS,
+                                          syc_metrics_GS,
+                                          syc_metrics_NGS))
+  # Add Site ID
+  syc_metrics_site$Site_ID <- Site_ID
+  # Move Site_ID to the first column
+  syc_metrics_site <- syc_metrics_site[, c("Site_ID", setdiff(names(syc_metrics_site), "Site_ID"))]
+  # Add time period: full-TS, GS, or NGS
+  syc_metrics_site$GS <- c("FT","GS","NGS")
+  rownames(syc_metrics_site) <- NULL
+  return(syc_metrics_site)
+}
+
+
+
 
 
