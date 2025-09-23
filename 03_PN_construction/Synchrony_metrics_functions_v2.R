@@ -25,7 +25,7 @@ cal_syc_metrics <- function(TE_df){
   # if all TE values are insignificant
   if(sum(TE_df_24h$sig,na.rm=TRUE)==0){
     # All synchrony metrics are NA
-    syc_metrics <- rep(NA,7)
+    syc_metrics <- rep(NA,8)
   }else{
     # Daily peak TE
     p_TE <- max(TE_df_24h$TE_norm[TE_df_24h$sig],na.rm=TRUE)
@@ -39,7 +39,20 @@ cal_syc_metrics <- function(TE_df){
     nonsig_lag1 <- TE_df_tmp %>% filter(sig == FALSE)
     mem1 <- if(nrow(nonsig_lag1) > 0) nonsig_lag1$Lag[1] else max(TE_df_tmp$Lag)
     
-    # Option 2: Width of TE peak (only significant). Not calculated
+    # Option 2: Width of significant TE that includes peak TE
+    peak_idx <- which(TE_df_tmp$Lag == p_lag)
+    # Walk left from peak
+    left_idx <- peak_idx
+    while(left_idx > 1 && TE_df_tmp$sig[left_idx - 1]) {
+      left_idx <- left_idx - 1
+    }
+    # Walk right from peak
+    right_idx <- peak_idx
+    while(right_idx < nrow(TE_df_tmp) && TE_df_tmp$sig[right_idx + 1]) {
+      right_idx <- right_idx + 1
+    }
+    # Width
+    mem2 <- TE_df_tmp$Lag[right_idx] - TE_df_tmp$Lag[left_idx] + 1
     
     # Option 3: From peak to first non-significant lag after the peak
     after_peak <- TE_df_tmp %>% filter(Lag > p_lag)
@@ -47,15 +60,15 @@ cal_syc_metrics <- function(TE_df){
     mem3 <- if(length(nonsig_after_peak) > 0) nonsig_after_peak[1] - p_lag else max(TE_df_tmp$Lag)
     
     # Option 4: Total significant duration (cumulative hours)
-    mem4 <- sum(TE_df_tmp$sig,na.rm=TRUE)
+    mem4 <- sum(TE_df_tmp$sig,na.rm=TRUE)-1
     
     # Option 5: From lag 0 to first lag after the peak
     mem5 <- if(length(nonsig_after_peak) > 0) nonsig_after_peak[1] else max(TE_df_tmp$Lag)
 
     # Combine all synchrony metrics -----------
-    syc_metrics <- c(p_TE,p_lag,agg_TE,mem1,mem3,mem4,mem5)
+    syc_metrics <- c(p_TE,p_lag,agg_TE,mem1,mem2,mem3,mem4,mem5)
   }
-  names(syc_metrics) <- c("pTE","plag","aggTE","mem1","mem3","mem4","mem5")
+  names(syc_metrics) <- c("pTE","plag","aggTE","mem1","mem2","mem3","mem4","mem5")
   return(syc_metrics)
 }
 
@@ -83,8 +96,8 @@ cal_syc_metrics_all_pairs <- function(Site_ID,type,var_comb){
     # Check if this TE_df is valid
     if(nrow(TE_df) < max_lag){
       # All NA
-      syc_metrics <- rep(NA,7)
-      names(syc_metrics) <- c("pTE","plag","aggTE","mem1","mem3","mem4","mem5")
+      syc_metrics <- rep(NA,8)
+      names(syc_metrics) <- c("pTE","plag","aggTE","mem1","mem2","mem3","mem4","mem5")
     }else{
       # Calculate Synchrony metrics if valid
       syc_metrics <- cal_syc_metrics(TE_df)

@@ -5,9 +5,9 @@
 # Peak daily TE: maximum significant TE normalized by Shannon entropy of the sink within the first 24 hours
 # Lag: best lag corresponding to peak TE
 # Daily aggregate TE: The total magnitude/contribution of predictive influence distributed across 24 hours, defined as the sum of TE for the set of lags with significant TE within 24 hours.
-# Memory: Output 4 memory options (Option 2 was not calculated):
+# Memory: Output 5 memory options:
 # Option 1: From lag 0 to first non-significant lag
-# Option 2: Width of TE peak (only significant). Not calculated
+# Option 2: Width of continuous significant TE that includes peak TE
 # Option 3: From peak to first non-significant lag after the peak
 # Option 4: Total significant duration (cumulative hours)
 # Option 5: From lag 0 to first lag after the peak
@@ -51,6 +51,6 @@ for(i in 1:length(Site_IDs)){
 }
 
 # Output this combined df
-write.csv(syc_metrics_all_sites_df,"03_PN_construction/Results/Syc_metrics_all_sites_4mem.csv")
+write.csv(syc_metrics_all_sites_df,"03_PN_construction/Results/Syc_metrics_all_sites_5mem.csv")
 
 
