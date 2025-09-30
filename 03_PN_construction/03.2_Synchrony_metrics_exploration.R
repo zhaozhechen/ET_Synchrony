@@ -14,6 +14,8 @@ library(patchwork)
 Syc_metrics_df <- read.csv("03_PN_construction/Results/Syc_metrics_all_sites_5mem.csv")
 # Updated site info
 Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
+# AI and ER values for sites
+Site_AI_ER <- read.csv("00_Data/ameriflux_site_AI_ER.csv")
 # Input path for Aridity index
 #Site_info_AI <- read.csv("00_Data/Site_summary.csv")
 # Source plotting functions
@@ -89,9 +91,16 @@ for(i in 1:nrow(var_comb)){
 
 
 
-# Test synchrony metrics vs AI and ET ---------------------
+# Test synchrony metrics vs AI and ER ---------------------
+# Merge Syc_metrics with AI and ER
+Syc_metrics_df <- Syc_metrics_df %>%
+  left_join(Site_AI_ER,by="Site_ID")
+Syc_metrics_df$ER[!is.na(Syc_metrics_df$ER) & Syc_metrics_df$ER >= 1] <- NA
 
-
+# Plot 
+ggplot(data=Syc_metrics_df,aes(x=ER,y=pTE_psi_to_ET))+
+  geom_point()+
+  my_theme
 
 
 
