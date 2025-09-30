@@ -1,6 +1,7 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
 # These codes are to analyze synchrony metrics based on TE results
 
+
 # This function calculates synchrony metrics
 # Input include:
 # TE_df: full TE_df from the source to the sink
@@ -10,6 +11,9 @@
 # agg_TE: daily aggregated TE in the first 24 hours
 # memory: four options (mem1,mem3,mem4,and,mem5). mem2 is not calculated
 cal_syc_metrics <- function(TE_df){
+  library(e1071)
+  library(entropy)
+  
   # Normalize TE and TEcrit
   TE_df_tmp <- TE_df %>%
     mutate(TE_norm = TE/Hy * 100,
@@ -25,22 +29,36 @@ cal_syc_metrics <- function(TE_df){
   # if all TE values are insignificant
   if(sum(TE_df_24h$sig,na.rm=TRUE)==0){
     # All synchrony metrics are NA
-    syc_metrics <- rep(NA,8)
+    syc_metrics <- rep(NA,16)
   }else{
     # Daily peak TE
-    p_TE <- max(TE_df_24h$TE_norm[TE_df_24h$sig],na.rm=TRUE)
-    # Get corresponding lag
-    p_lag <- TE_df_24h$Lag[which(TE_df_24h$TE_norm == p_TE)[1]]
-    # Calculate aggregate TE within the first 24 hours
-    agg_TE <- sum(TE_df_24h$TE_norm[TE_df_24h$sig],na.rm=TRUE)
+    daily_p_TE <- max(TE_df_24h$TE_norm[TE_df_24h$sig],na.rm=TRUE)
     
+    # Mean TE across lags
+    mean_TE <- mean(TE_df_tmp$TE_norm)
+    
+    # Mean significant TE across lags
+    mean_sig_TE <- mean(TE_df_tmp$TE_norm[TE_df_tmp$sig])
+    
+    # Daily aggregate TE within the first 24 hours
+    daily_agg_TE <- sum(TE_df_24h$TE_norm[TE_df_24h$sig],na.rm=TRUE)
+    
+    # Variance of TE across lags
+    var_TE <- var(TE_df_tmp$TE_norm)
+    
+    # Skewness of TE values across lags
+    sk_TE <- skewness(TE_df_tmp$TE_norm)
+    
+    # Best lag for peak daily TE
+    best_lag <- TE_df_24h$Lag[which(TE_df_24h$TE_norm == daily_p_TE)[1]]
+
     # Calculate memory ---------
     # Option 1: From lag 0 to first non-significant lag
     nonsig_lag1 <- TE_df_tmp %>% filter(sig == FALSE)
     mem1 <- if(nrow(nonsig_lag1) > 0) nonsig_lag1$Lag[1] else max(TE_df_tmp$Lag)
     
     # Option 2: Width of significant TE that includes peak TE
-    peak_idx <- which(TE_df_tmp$Lag == p_lag)
+    peak_idx <- which(TE_df_tmp$Lag == best_lag)
     # Walk left from peak
     left_idx <- peak_idx
     while(left_idx > 1 && TE_df_tmp$sig[left_idx - 1]) {
@@ -55,20 +73,44 @@ cal_syc_metrics <- function(TE_df){
     mem2 <- TE_df_tmp$Lag[right_idx] - TE_df_tmp$Lag[left_idx] + 1
     
     # Option 3: From peak to first non-significant lag after the peak
-    after_peak <- TE_df_tmp %>% filter(Lag > p_lag)
+    after_peak <- TE_df_tmp %>% filter(Lag > best_lag)
     nonsig_after_peak <- after_peak$Lag[which(after_peak$sig == FALSE)]
-    mem3 <- if(length(nonsig_after_peak) > 0) nonsig_after_peak[1] - p_lag else max(TE_df_tmp$Lag)
+    mem3 <- if(length(nonsig_after_peak) > 0) nonsig_after_peak[1] - best_lag else max(TE_df_tmp$Lag)
     
     # Option 4: Total significant duration (cumulative hours)
     mem4 <- sum(TE_df_tmp$sig,na.rm=TRUE)-1
     
     # Option 5: From lag 0 to first lag after the peak
     mem5 <- if(length(nonsig_after_peak) > 0) nonsig_after_peak[1] else max(TE_df_tmp$Lag)
-
+    
+    # Robustness/stability related:
+    # Coefficient of variation
+    cv_TE <- sd(TE_df_tmp$TE_norm)/mean_TE
+    
+    # Lag-1 Autocorrelation of TE values across lags
+    x <- TE_df_tmp$TE_norm
+    ac1_TE <- cor(x[-length(x)],x[-1])
+    
+    # Richard-Baker Index (flashiness)
+    RB_id_TE <- sum(abs(diff(TE_df_tmp$TE_norm)))/sum(TE_df_tmp$TE_norm)
+    
+    # Shannon entropy
+    p <- x/sum(x)
+    H_TE <- entropy(p,method="ML",unit="log2")
+    
+    
     # Combine all synchrony metrics -----------
-    syc_metrics <- c(p_TE,p_lag,agg_TE,mem1,mem2,mem3,mem4,mem5)
+    syc_metrics <- c(
+      daily_p_TE,mean_TE,mean_sig_TE,daily_agg_TE,var_TE,
+      sk_TE,best_lag,mem1,mem2,mem3,mem4,mem5,
+      cv_TE,ac1_TE,RB_id_TE,H_TE)
   }
-  names(syc_metrics) <- c("pTE","plag","aggTE","mem1","mem2","mem3","mem4","mem5")
+  
+  names(syc_metrics) <- c(
+    "daily_p_TE","mean_TE","mean_sig_TE","daily_agg_TE","var_TE",
+    "sk_TE","best_lag","mem1","mem2","mem3","mem4","mem5",
+    "cv_TE","ac1_TE","RB_id_TE","H_TE")
+  
   return(syc_metrics)
 }
 

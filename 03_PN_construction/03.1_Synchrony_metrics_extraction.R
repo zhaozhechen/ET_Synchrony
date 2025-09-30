@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
-# Date: 2025.9.22
+# Date: 2025.9.29
 
 # This code is to extract Synchrony metrics (peak TE, memory, lag, aggTE)
 # Peak daily TE: maximum significant TE normalized by Shannon entropy of the sink within the first 24 hours
@@ -16,9 +16,6 @@
 
 # ------ Global ------ 
 library(dplyr)
-library(future)
-library(future.apply)
-library(progressr)
 
 # Input path for TE_df
 TE_df_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/TE_df/"
@@ -41,16 +38,63 @@ var_comb <- expand.grid(from = var_ls,
 # Sites to process
 Site_IDs <- Site_info$site_id
 
-syc_metrics_all_sites_df <- c()
-# Process for all sites
-for(i in 1:length(Site_IDs)){
-  Site_ID <- Site_IDs[i]
-  syc_metrics_all_sites <- syc_site(Site_ID,var_comb)
-  syc_metrics_all_sites_df <- rbind(syc_metrics_all_sites_df,syc_metrics_all_sites)
-  message(i)
+# Below test extracting metrics for one pair from SM->ET =============
+type <- "full_TS"
+# Only do SM -> ET
+i <- 1
+
+# Initialize a df to store all output syc metrics for all sites
+syc_metrics_all <- data.frame()
+# Loop over all sites
+for(arrayid in 1:length(Site_IDs)){
+
+  Site_ID <- Site_IDs[arrayid]
+  
+  # Get file name for the TE_df_ls
+  file_name <- paste0("TE_df_ls_",type,"_",Site_ID,".rds")
+  # Read in TE_df_ls
+  TE_df_ls <- readRDS(paste0(TE_df_path,file_name))
+  # Loop over each variable pair
+  
+  # Source and sink name
+  source_name <- as.character(var_comb$from[i])
+  sink_name <- as.character(var_comb$to[i])
+  # Get TE_df for this pair
+  TE_df_name <- paste0(source_name,"_to_",sink_name)
+  TE_df <- TE_df_ls[[TE_df_name]]
+  # Check if this TE_df is valid
+  if(nrow(TE_df) < max_lag){
+    # All NA
+    syc_metrics <- rep(NA,16)
+    names(syc_metrics) <- c(
+      "daily_p_TE","mean_TE","mean_sig_TE","daily_agg_TE","var_TE",
+      "sk_TE","best_lag","mem1","mem2","mem3","mem4","mem5",
+      "cv_TE","ac1_TE","RB_id_TE","H_TE")
+  }else{
+    # Calculate Synchrony metrics if valid
+    syc_metrics <- cal_syc_metrics(TE_df)
+  }
+  
+  syc_metrics_all <- rbind(syc_metrics_all,
+                           data.frame(site_ID = Site_ID,
+                                      t(syc_metrics)))
+  message(arrayid)
 }
+  
+# Output this df
+write.csv(syc_metrics_all,"03_PN_construction/Results/Syc_metrics_16_psi_ET_all_sites.csv")
+
+
+
+# Process for all sites
+#for(i in 1:length(Site_IDs)){
+#  Site_ID <- Site_IDs[i]
+#  syc_metrics_all_sites <- syc_site(Site_ID,var_comb)
+#  syc_metrics_all_sites_df <- rbind(syc_metrics_all_sites_df,syc_metrics_all_sites)
+#  message(i)
+#}
 
 # Output this combined df
-write.csv(syc_metrics_all_sites_df,"03_PN_construction/Results/Syc_metrics_all_sites_5mem.csv")
+#write.csv(syc_metrics_all_sites_df,"03_PN_construction/Results/Syc_metrics_all_sites_5mem.csv")
 
 
