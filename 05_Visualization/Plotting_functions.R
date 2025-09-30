@@ -938,3 +938,60 @@ grob_to_ggplot <- function(g_matrix) {
   g <- ggplot() + annotation_custom(grob_obj)
   return(g)
 }
+
+# This function makes scree plot from pca results
+# Input is the eigen value df
+scree_pt <- function(eig.val){
+  g_scree <- ggplot(data=eig.val,aes(x=PCs,y=variance.percent))+
+    geom_bar(stat="identity",
+             fill="#2e7ebb",
+             alpha=0.8,
+             color="black",
+             linewidth=0.5)+
+    geom_line(color="black",linewidth=0.8)+
+    geom_point(size=2)+
+    my_theme+
+    labs(x="PCs",y = "Explained Variances (%)")+
+    scale_x_continuous(breaks = c(1:10))+
+    geom_text(aes(label = paste0(round(variance.percent,1),"%")),
+              size=4,
+              hjust=0.01,vjust=-0.5)+
+    ylim(c(0,45))+
+    theme(aspect.ratio = 1/1)
+  return(g_scree)
+}
+
+# This function makes biplot from pca results
+# Input include:
+# The site location df
+# The variable loading df
+# A factor to shrink arrows
+biplot_pt <- function(site_scores,var_loading,arrow_factor){
+  var_loading <- var_loading %>%
+    mutate(PC1 = Dim.1 * arrow_factor,
+           PC2 = Dim.2 * arrow_factor)
+  
+  # Make biplot 
+  g_biplot <- ggplot()+
+    # Arrows
+    geom_segment(data = var_loading,aes(x=0,y=0,xend=PC1,yend=PC2),
+                 arrow = arrow(length = unit(0.25,"cm")),
+                 color=my_color[2],linewidth = 0.8)+
+    # Sites
+    geom_point(data = site_scores,aes(x = Dim.1,y=Dim.2),
+               color=my_color[1],size=2)+
+    # Labels for variables
+    geom_text_repel(data = var_loading,
+                    aes(x = PC1, y = PC2, label = var),
+                    color = my_color[2], size = 5, 
+                    box.padding = 0.5,
+                    point.padding = 0.5,
+                    segment.color = "grey50") +
+    geom_hline(yintercept = 0,linetype = "dashed",linewidth = 0.8)+
+    geom_vline(xintercept = 0,linetype = "dashed",linewidth = 0.8)+
+    my_theme+
+    labs(x = paste0("PC1 (", round(eig.val$variance.percent[1],1), "%)"),
+         y = paste0("PC2 (", round(eig.val$variance.percent[2],1), "%)")) +
+    theme(aspect.ratio = 1)  
+  return(g_biplot)
+}
