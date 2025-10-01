@@ -7,6 +7,14 @@ library(RColorBrewer)
 library(data.table)
 library(gghalves)
 library(stringr)
+library(sf)
+
+# Make CONUS boundary
+# Whole US map
+CONUS <- st_read("00_Data/cb_2018_us_state_20m/cb_2018_us_state_20m.shp")
+# CONUS outer boundary map
+#CONUS <- st_union(CONUS[1][CONUS$STUSPS!="AK"&CONUS$STUSPS!="HI"&CONUS$STUSPS!="PR",])
+CONUS <- CONUS[1][CONUS$STUSPS!="AK"&CONUS$STUSPS!="HI"&CONUS$STUSPS!="PR",]
 
 # Theme for all plots
 my_theme <- theme(
@@ -675,18 +683,46 @@ syc_map <- function(df,varname,palette_name,legend_title,g_title,color_limits){
   g <- ggplot()+
     geom_sf(data=CONUS,fill="grey",color="black",alpha=0.3)+
     geom_point(data=df,aes(x=longitude,y=latitude,
-                           color=.data[[varname]]),
-               size=5)+
-    scale_color_distiller(palette = palette_name,direction = 1,
-                          limits = color_limits,
-                          guide = guide_colorbar(
-                            ticks = TRUE,
-                            frame.colour = "black",
-                            ticks.colour = "black"
-                          ))+
-    labs(color = legend_title)+
+                           fill=.data[[varname]]),
+               size=5,alpha=0.8,shape=21,color="black")+
+    scale_fill_distiller(
+      palette = palette_name, direction = -1,
+      limits = color_limits,
+      oob = scales::squish,  # keeps values inside limits
+      breaks = seq(color_limits[1], color_limits[2], length.out = 5),
+      labels = function(x){
+        labs <- as.character(x)
+        labs[1] <- paste0("≤ ", labs[1])   # add ≤ to min
+        labs[length(labs)] <- paste0("≥ ", labs[length(labs)]) # add ≥ to max
+        labs
+      },
+      guide = guide_colorbar(
+        ticks = TRUE,
+        frame.colour = "black",
+        ticks.colour = "black"
+      )
+    )+
+    labs(fill = legend_title)+
     ggtitle(g_title)+
     map_theme
+  return(g)
+}
+
+# This is the same map function but for discrete values
+syc_map_disc <- function(df,varname,legend_title,g_title){
+  g <- ggplot()+
+    geom_sf(data=CONUS,fill="grey",color="black",alpha=0.3)+
+    geom_point(data=df,aes(x=longitude,y=latitude,
+                           fill=.data[[varname]]),
+               size=5,alpha=0.8,shape=21,color="black")+
+    scale_fill_manual(
+      values = my_color,
+      guide = guide_legend(override.aes = list(size = 4))
+    )+
+    labs(fill = legend_title)+
+    ggtitle(g_title)+
+    map_theme+
+    theme(legend.position = "bottom")
   return(g)
 }
 
@@ -994,4 +1030,21 @@ biplot_pt <- function(site_scores,var_loading,arrow_factor){
          y = paste0("PC2 (", round(eig.val$variance.percent[2],1), "%)")) +
     theme(aspect.ratio = 1)  
   return(g_biplot)
+}
+
+# This function makes k-means clustering plot
+# Input includes site_score with PC1,PC2, and clusters
+cluster_pt <- function(site_scores){
+  g_cluster <- ggplot(site_scores, aes(x = Dim.1, y = Dim.2, color = cluster)) +
+    geom_point(size = 3, alpha = 0.8) +
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.8) +
+    geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.8) +
+    scale_color_manual(values = my_color) +
+    my_theme +
+    labs(x = paste0("PC1 (", round(eig.val$variance.percent[1],1), "%)"),
+         y = paste0("PC2 (", round(eig.val$variance.percent[2],1), "%)"),
+         color = "Cluster",
+         title = "K-means Clusters in PCA Space")+
+    theme(aspect.ratio = 1) 
+  return(g_cluster)
 }

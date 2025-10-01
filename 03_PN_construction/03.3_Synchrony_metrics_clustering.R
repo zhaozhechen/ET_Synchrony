@@ -15,11 +15,11 @@ syc_metrics_df <- read.csv("03_PN_construction/Results/Syc_metrics_16_psi_ET_all
 
 source("05_Visualization/Plotting_functions.R")
 # Updated site info
-#Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
+Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 
 # Output path for figures
 Output_path <- "03_PN_construction/Results/"
-my_color <- brewer.pal(3,"Set2")
+my_color <- brewer.pal(8,"Set2")
 
 # ------- Main ----------
 # data processing =========================
@@ -61,10 +61,56 @@ g <- plot_grid(g_scree,g_biplot,nrow=1,labels = "auto")
 print_g(g,"PCA_syc_metrics_16_psi_ET_FT",10,5)
 
 # Make maps of PC loadings -------
+# Match Site PC scores with coordinates
+site_scores <- site_scores %>%
+  left_join(Site_info %>%
+              select(c(site_id,latitude,longitude)),
+            by = c("site_ID" = "site_id"))
+# Color coded by PC1
+map_PC1 <- syc_map(df = site_scores,
+                   varname = "Dim.1",
+                   palette_name = "RdYlBu",
+                   legend_title = "PC1",
+                   g_title = "",
+                   color_limits = c(-3,3))
+# Color coded by PC2
+map_PC2 <- syc_map(df = site_scores,
+                   varname = "Dim.2",
+                   palette_name = "RdYlBu",
+                   legend_title = "PC2",
+                   g_title = "",
+                   color_limits = c(-3,3))
+g <- plot_grid(map_PC1,map_PC2,labels="auto")
+print_g(g,"PC_map_syc_metrics_16_psi_ET_FT",10,2.5)
 
+# k-means clustering ======================
+# Extract PCA site scores
+pc_scores <- site_scores %>% select(Dim.1, Dim.2, Dim.3, Dim.4, Dim.5)
+# Elbow method
+g_elbow <- fviz_nbclust(pc_scores, kmeans, method = "wss") +
+  labs(title = "Elbow Method for k-means")
+print_g(g_elbow,"Elbow_syc_metrics_16_psi_ET_FT",4,4)
 
-
-
+# Test k numbers from 4-8
+set.seed(111) 
+for(k in 4:8){
+  # k-means
+  km_res <- kmeans(pc_scores, centers = k, nstart = 25)
+  # Add cluster info to site_scores
+  site_scores$cluster <- factor(km_res$cluster)
+  
+  # Make cluster plot
+  g_cluster <- cluster_pt(site_scores)
+  # Make a map color coded by cluster
+  map_cluster <- syc_map_disc(df = site_scores,
+                              varname = "cluster",
+                              legend_title = "Cluster",
+                              g_title = "")
+  # Combine these two plots
+  g <- plot_grid(g_cluster,map_cluster,nrow=1,labels = "auto")
+  title <- paste0("Cluster",k,"_syc_metrics_16_psi_ET_FT")
+  print_g(g,title,10,4)
+}
 
 
 
