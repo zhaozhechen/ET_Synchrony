@@ -1,7 +1,6 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
 # These codes are to analyze synchrony metrics based on TE results
 
-
 # This function calculates synchrony metrics
 # Input include:
 # TE_df: full TE_df from the source to the sink
