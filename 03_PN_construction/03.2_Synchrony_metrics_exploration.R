@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
-# Date: 2025.9.22
+# Date: 2025.10.21
 
 # This code is to explore and analyze synchrony metrics
 
@@ -10,7 +10,9 @@ library(sf)
 library(GGally)
 library(patchwork)
 
-# Input path for Synchrony metrics for all sites
+# Input path for Synchrony metrics for 12 pairs
+#Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
+
 Syc_metrics_df <- read.csv("03_PN_construction/Results/Syc_metrics_all_sites_5mem.csv")
 # Updated site info
 Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
@@ -51,42 +53,7 @@ var_comb <- expand.grid(from = var_ls,
                         to = var_ls) %>%
   filter(from != to)
 
-# Compare 5 memory options ========
-# Loop each season and variable pair
-for(i in 1:nrow(var_comb)){
-  source_name <- var_comb$from[i]
-  sink_name <- var_comb$to[i]
-  # Get memory columns names
-  mem_names <- paste0(c("mem1","mem2","mem3","mem4","mem5"),"_",source_name,"_to_",sink_name)
-  # Initiliate a list to store three seasons
-  g_seasons <- list()
-  for(season in seasons){
-    # Get a subset of these memory columns for this season
-    df_tmp <- Syc_metrics_df %>%
-      filter(GS == season) %>%
-      select(Site_ID,all_of(mem_names))
-    # Rename the columns
-    names(df_tmp) <- c("Site_ID","Mem1","Mem2","Mem3","Mem4","Mem5")
-    # Pivot to long data
-    df_tmp_long <- df_tmp %>%
-      pivot_longer(cols = starts_with("Mem"),
-                   names_to = "Metric",
-                   values_to = "value")
-    # Create scatter plot matrix
-    g_matrix <- ggpairs(df_tmp[,c(2:6)])+
-      ggtitle(paste0("Memory comparison (",source_name," → ",sink_name,"; ",season,")"))+
-      my_theme
-    g_seasons[[season]] <- grob_to_ggplot(g_matrix)
-  }
-  
-  
-  # Output plots for this variable pair
-  g <- wrap_plots(g_seasons,nrow=1)
-  print_g(g,paste0("Mem5_comparison/Mem4_",source_name,"_to_",sink_name),
-          15,5)
-  
-  message(i)
-}
+
 
 
 
@@ -112,6 +79,43 @@ ggplot(data=Syc_metrics_df,aes(x=ER,y=pTE_psi_to_ET))+
 
 
 if(FALSE){
+  # Compare 5 memory options ========
+  # Loop each season and variable pair
+  for(i in 1:nrow(var_comb)){
+    source_name <- var_comb$from[i]
+    sink_name <- var_comb$to[i]
+    # Get memory columns names
+    mem_names <- paste0(c("mem1","mem2","mem3","mem4","mem5"),"_",source_name,"_to_",sink_name)
+    # Initiliate a list to store three seasons
+    g_seasons <- list()
+    for(season in seasons){
+      # Get a subset of these memory columns for this season
+      df_tmp <- Syc_metrics_df %>%
+        filter(GS == season) %>%
+        select(Site_ID,all_of(mem_names))
+      # Rename the columns
+      names(df_tmp) <- c("Site_ID","Mem1","Mem2","Mem3","Mem4","Mem5")
+      # Pivot to long data
+      df_tmp_long <- df_tmp %>%
+        pivot_longer(cols = starts_with("Mem"),
+                     names_to = "Metric",
+                     values_to = "value")
+      # Create scatter plot matrix
+      g_matrix <- ggpairs(df_tmp[,c(2:6)])+
+        ggtitle(paste0("Memory comparison (",source_name," → ",sink_name,"; ",season,")"))+
+        my_theme
+      g_seasons[[season]] <- grob_to_ggplot(g_matrix)
+    }
+    
+    
+    # Output plots for this variable pair
+    g <- wrap_plots(g_seasons,nrow=1)
+    print_g(g,paste0("Mem5_comparison/Mem4_",source_name,"_to_",sink_name),
+            15,5)
+    
+    message(i)
+  }
+  
   # Preprocessing of synchrony df -------------------
   Syc_metrics_df <- Syc_metrics_df  %>%
     select(-X) %>%

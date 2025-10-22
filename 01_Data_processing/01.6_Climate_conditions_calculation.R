@@ -1,10 +1,9 @@
 # Author: Zhaozhe Chen
-# Update Date: 2025.9.22
+# Update Date: 2025.10.21
 
 # ---------- Global ---------------
 library(here)
 library(dplyr)
-
 
 # Updated site info
 Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
@@ -17,7 +16,8 @@ source(here("01_Data_processing","AMF_processing_functions.R"))
 # Manually add CVM, which has the same gs as CRO
 # Manually add BSV
 PFTlist <- c('ENF','EBF','DNF','DBF','MF','CSH','OSH','WSA','SAV','GRA','CRO','CVM','BSV') # plant functional type
-GSlist <- 1/c(125,150,150,100,125,300,170,300,70,40,40,40,1000)# m/s, corresponding stomatal conductance from  MODIFIED_IGBP_MODIS_NOAH
+GSlist <- 1/c(125,150,150,100,125,300,170,300,70,40,40,40,999)# m/s, corresponding stomatal conductance from  MODIFIED_IGBP_MODIS_NOAH
+# https://ral.ucar.edu/sites/default/files/public/product-tool/unified-noah-lsm/parameters/VEGPARM.TBL
 # Parameters for PET calculation Unit mm/day
 rhoa  <- 1.225  # kg/m3
 Cp    <- 1005   # J/kg/K
@@ -28,7 +28,7 @@ Lv    <- 2453e6 # J/m3
 
 # Initialize vector to store output
 AI_all <- c()
-ER_all <- c()
+EI_all <- c()
 
 for(i in 1:nrow(Site_info)){
   Site_ID <- Site_info$site_id[i]
@@ -44,10 +44,11 @@ for(i in 1:nrow(Site_info)){
     mutate(DEL = PM_delta(TA + 273.15),
            ga = 1/(WS/USTAR^2 + 6.2*USTAR^(-2/3))) %>%
     # Get hourly PET mm/hour
-    mutate(hourly_PET = (DEL*NETRAD + rhoa*Cp*ga*VPD*1000)/(DEL+gamma*(1+ga/gs))/Lv*1000*3600)
+    mutate(hourly_PET = (DEL*NETRAD + rhoa*Cp*ga*VPD*1000)/(DEL+gamma*(1+ga/gs))/Lv*1000*3600) %>%
+    mutate(hourly_PET = if_else(hourly_PET <0,NA,hourly_PET))
   
   # Aridity index calculation --------
-  # Keep only rows when P and PET both exisit
+  # Keep only rows when P and PET both exist
   AI_rows <- AMF_df %>%
     filter(!is.na(P_F),!is.na(hourly_PET))
   # Get total P and total PET
@@ -55,28 +56,28 @@ for(i in 1:nrow(Site_info)){
   total_PET <- sum(AI_rows$hourly_PET)
   AI <- total_P/total_PET
 
-  # Evaporative ratio (ER) calculation -------
-  # Keep only rows when P and ET both exisit
-  ER_rows <- AMF_df %>%
+  # Evaporative index (EI = ET/P) ------
+  # Keep only rows when P and ET both exist
+  EI_rows <- AMF_df %>%
     filter(!is.na(P_F),!is.na(ET))
-  total_P <- sum(ER_rows$P_F)
-  total_ET <- sum(ER_rows$ET)
-  ER <- total_P/total_ET
+  total_P <- sum(EI_rows$P_F)
+  # Correct unit for ET from mm/day to mm/hour
+  total_ET <- sum(EI_rows$ET)/24
+  EI <- total_ET/total_P
   
   AI_all <- c(AI_all,AI)
-  ER_all <- c(ER_all,ER)
+  EI_all <- c(EI_all,EI)
   
   message(i)
 
 }
 
 # Put them into df
-AI_ER_df <- data.frame(Site_ID = Site_info$site_id,
+AI_EI_df <- data.frame(Site_ID = Site_info$site_id,
                        AI = AI_all,
-                       ER = ER_all)
+                       EI = EI_all)
 
 # Output this df
-write.csv(AI_ER_df,"00_Data/ameriflux_site_AI_ER.csv")
-
+write.csv(AI_EI_df,"00_Data/ameriflux_site_AI_EI.csv")
 
 
