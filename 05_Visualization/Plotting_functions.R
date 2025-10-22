@@ -29,7 +29,9 @@ my_theme <- theme(
   plot.title = element_text(size=14),
   axis.text = element_text(size=14),
   axis.title = element_text(size=14),
-  legend.position = "none"
+  legend.position = "none",
+  strip.background = element_rect(color="black",fill="grey90"),
+  strip.text = element_text(face = "bold",size=14)
 )
 
 # Theme for maps
@@ -1120,4 +1122,29 @@ syc_scatter <- function(df,res_varname,pre_varname){
   return(g)
 }
 
+# This function is to make heatmap for adjusted R2 or k
+# Input include name of variable to be filled
+# season: FT, GS, NGS
+# palette name for filling
+heatmap_plot <- function(fill_name,season,palette_name,direction){
+  g <- ggplot(results_all %>% filter(Season == season),
+              aes(x = predictor,y = response,
+                  fill= if_else(pval < 0.05,.data[[fill_name]],NA)))+
+    geom_tile(color="white",linewidth = 0.3)+
+    scale_fill_distiller(
+      palette = palette_name,
+      na.value = "grey",
+      direction = direction,
+      guide = guide_colorbar(
+        frame.colour = "black",
+        ticks.colour = "black"
+      )
+    )+
+    facet_wrap(~ pair,ncol=3)+
+    my_theme+
+    labs(x = "",y="",fill=fill_name)+
+    theme(legend.position = "right")+
+    ggtitle(season)  
+  return(g)
+}
 
