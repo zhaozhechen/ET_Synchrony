@@ -173,6 +173,59 @@ syc_site <- function(Site_ID,var_comb){
   return(syc_metrics_site)
 }
 
+# This function is to summarize regression results between response and predictors
+# For 3 seasons
+# Input includes synchrony metrics df
+# response and predictor names
+# Source and sink names
+summarize_syc_stats <- function(df,source_name,sink_name,res_varname,pre_varname){
+  # Reshape df to long format
+  df_long <- df %>%
+    # Only keep required variables
+    dplyr::select(site_ID,all_of(pre_varname),contains(res_varname)) %>%
+    pivot_longer(
+      cols = matches(paste0("^(FT|GS|NGS)_",res_varname,"$")),
+      names_to = "Season",
+      values_to = "Response"
+    ) %>%
+    mutate(
+      # Clean up season names
+      Season = sub(paste0("_", res_varname), "", Season),
+      Season = factor(Season, levels = c("FT", "GS", "NGS")),
+      # Scale predictor to [0,1] for comparability across predictors
+      pred_scaled = scales::rescale(.data[[pre_varname]],to=c(0,1))
+    )
+  
+  # Fit regression by season
+  out_df <- df_long %>%
+    group_by(Season) %>%
+    do({
+      mod <- lm(Response ~ pred_scaled,data=.)
+      s <- summary(mod)
+      tibble(
+        R2_adj = s$adj.r.squared,
+        k = coef(mod)[2],
+        pval = coef(s)[2,4],
+        n = nrow(na.omit(.))
+      )
+    }) %>%
+    ungroup() %>%
+    mutate(
+      source = source_name,
+      sink = sink_name,
+      response = res_varname,
+      predictor = pre_varname,
+      signif = case_when(
+        pval < 0.001 ~ "***",
+        pval < 0.01  ~ "**",
+        pval < 0.05  ~ "*",
+        TRUE         ~ "ns"
+      )
+    ) %>%
+    dplyr::select(source, sink, Season, response, predictor, k, R2_adj, pval, signif, n)
+  
+  return(out_df)
+}
 
 
 

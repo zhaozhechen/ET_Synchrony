@@ -89,12 +89,6 @@ for(pre_id in 1:length(pre_var_ls)){
 }
 
 
-
-
-
-
-
-
 # Previous plotting codes =======================================================
 if(FALSE){
   # Compare 5 memory options ========
