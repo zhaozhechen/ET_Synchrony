@@ -31,7 +31,7 @@ RD_values <- raster::extract(combined_raster[["RD"]],coords,
 TSand_values <- raster::extract(combined_raster[["T_Sand"]],coords,
                                 method = "bilinear")
 # Put them together into 1 df
-predictor_df <- data.frame(site_id = site_info$site_id,
+predictor_df <- data.frame(site_ID = site_info$site_id,
                            AI = AI_values,
                            CH = CH_values,
                            RD = RD_values,

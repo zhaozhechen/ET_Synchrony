@@ -1,38 +1,26 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
-# Date: 2025.10.21
+# Date: 2025.10.22
 
 # This code is to explore and analyze synchrony metrics
 
 # -------- Global ----------
 library(dplyr)
 library(tidyr)
-library(sf)
-library(GGally)
-library(patchwork)
 
 # Input path for Synchrony metrics for 12 pairs
-#Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
+Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
 
-Syc_metrics_df <- read.csv("03_PN_construction/Results/Syc_metrics_all_sites_5mem.csv")
 # Updated site info
 Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
-# AI and ER values for sites
-Site_AI_ER <- read.csv("00_Data/ameriflux_site_AI_ER.csv")
-# Input path for Aridity index
-#Site_info_AI <- read.csv("00_Data/Site_summary.csv")
+
+# Predictor df
+predictor_df <- read.csv("00_Data/perdictor_df.csv")
+
 # Source plotting functions
 source("05_Visualization/Plotting_functions.R")
-# Source synchrony metrics functions
-source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 
-# Make CONUS boundary
-# Whole US map
-CONUS <- st_read("00_Data/cb_2018_us_state_20m/cb_2018_us_state_20m.shp")
-# CONUS outer boundary map
-#CONUS <- st_union(CONUS[1][CONUS$STUSPS!="AK"&CONUS$STUSPS!="HI"&CONUS$STUSPS!="PR",])
-CONUS <- CONUS[1][CONUS$STUSPS!="AK"&CONUS$STUSPS!="HI"&CONUS$STUSPS!="PR",]
 # Output path for figures
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_vs_predictors/"
 
 # Colors for the three seasons
 season_color <- brewer.pal(3,"Set2")
@@ -44,40 +32,70 @@ var_ls <- c("ET","psi","VPD","TA")
 # All seasons
 seasons <- c("FT","GS","NGS")
 
-# --------- Main ---------
-Syc_metrics_df <- Syc_metrics_df  %>%
-  select(-X) 
-
 # All variable combinations
 var_comb <- expand.grid(from = var_ls,
                         to = var_ls) %>%
   filter(from != to)
 
+# Determine whether to make plots
+If_plot <- FALSE
+
+# --------- Main ---------
+# Response variable list
+res_var_ls <- c("daily_p_TE","daily_agg_TE","best_lag","mem1","mem2","mem3","mem4","mem5")
+# Predictor variable list
+pre_var_ls <- c("AI","CH","RD","TSand","elevation","porosity")
+
+for(pre_id in 1:length(pre_var_ls)){
+  # Variable name for predictor
+  pre_varname <- pre_var_ls[pre_id]
+  # Loop over each pair of source and sink variables
+  # Initialize a list to store the figures
+  g_ls <- list()
+  for(pair_id in 1:12){
+    # Determine which variable pair to process
+    source_name <- var_comb$from[pair_id]
+    sink_name <- var_comb$to[pair_id]
+    # Read in synchorny metrics df
+    Syc_df <- read.csv(paste0(Syc_metrics_path,"Syc_metrics_df_",source_name,"_",sink_name,".csv")) %>%
+      dplyr::select(- X)
+    
+    # Merge with predictors
+    Syc_df_merge <- Syc_df %>%
+      # Merge with predictors
+      left_join(predictor_df %>% dplyr::select(-X),by="site_ID") %>%
+      # Merge with site info
+      left_join(Site_info %>% dplyr::select(-X),by=c("site_ID" = "site_id"))
+    
+    # Loop over the response variables
+    for(res_id in 1:length(res_var_ls)){
+      res_varname <- res_var_ls[res_id]
+    
+      # Make a figure
+      g_scatter <- syc_scatter(Syc_df_merge,res_varname,pre_varname)+
+        ggtitle(paste(source_name,"→",sink_name))
+      # Store this figure in the figure list
+      g_ls[[length(g_ls)+1]] <- g_scatter
+    }
+  }
+  
+  # Combine all figures for this predictor into 1 plot
+  g_all <- plot_grid(plotlist = g_ls,ncol = length(res_var_ls),
+                     align = "hv")
+  # Output this figure
+  print_g(g_all,paste0("Syc_metrics_vs_",pre_varname),
+          24,36)
+  message(pre_id,"out of",length(pre_var_ls))
+}
 
 
 
 
 
-# Test synchrony metrics vs AI and ER ---------------------
-# Merge Syc_metrics with AI and ER
-Syc_metrics_df <- Syc_metrics_df %>%
-  left_join(Site_AI_ER,by="Site_ID")
-Syc_metrics_df$ER[!is.na(Syc_metrics_df$ER) & Syc_metrics_df$ER >= 1] <- NA
-
-# Plot 
-ggplot(data=Syc_metrics_df,aes(x=ER,y=pTE_psi_to_ET))+
-  geom_point()+
-  my_theme
 
 
 
-
-
-
-
-
-
-
+# Previous plotting codes =======================================================
 if(FALSE){
   # Compare 5 memory options ========
   # Loop each season and variable pair
