@@ -18,9 +18,10 @@ predictor_df <- read.csv("00_Data/perdictor_df.csv")
 
 # Source plotting functions
 source("05_Visualization/Plotting_functions.R")
+source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 
 # Output path for figures
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_vs_predictors/"
+#Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_vs_predictors/"
 
 # Colors for the three seasons
 season_color <- brewer.pal(3,"Set2")
@@ -37,15 +38,62 @@ var_comb <- expand.grid(from = var_ls,
                         to = var_ls) %>%
   filter(from != to)
 
-# Determine whether to make plots
-If_plot <- FALSE
-
-# --------- Main ---------
 # Response variable list
 res_var_ls <- c("daily_p_TE","daily_agg_TE","best_lag","mem1","mem2","mem3","mem4","mem5")
 # Predictor variable list
 pre_var_ls <- c("AI","CH","RD","TSand","elevation","porosity")
 
+# Determine whether to make plots
+If_plot <- FALSE
+
+# --------- Main ---------
+source_name1 <- "psi"
+sink_name1 <- 'ET'
+
+source_name2 <- "ET"
+sink_name2 <- "psi"
+
+# target response variable name
+res_varname <- "daily_p_TE"
+
+
+
+# Compare syc metrics across source-sink pairs =============
+
+x_title <- "TE(psi,ET) - TE(ET,psi)"
+
+# Initiliaze a list to store figures
+g_ls <- list()
+# Get merged syc metrics
+pair_syc_df_merged <- merge_pair_syc_df(source_name1,sink_name1,source_name2,sink_name2,res_varname)
+# Get distribution of target variable, across seasons
+pdf_delta_response <- plot_pdf(pair_syc_df_merged,"delta_response","Season",
+                               season_color,x_intercept = 0, x_title = x_title)
+pdf_ratio_response <- plot_pdf(pair_syc_df_merged,"ratio_response","Season",
+                               season_color,x_intercept = 1, x_title = x_title)
+# Make scatter plots across predictors
+for(pre_varname in pre_var_ls){
+  g_scatter <- syc_scatter_long(pair_syc_df_merged,"delta_response",pre_varname,x_title)
+  
+  
+}
+
+
+
+
+my_pallete <- season_color
+group_varname <- "Season"
+varname <- "delta_response"
+x_intercept <- 0
+x_title <- bquote(delta~TE(psi))
+
+
+
+
+
+
+# Scatter plots of syc metrics vs predictors for each of the 12 source-sink pairs ================
+if(If_plot){
 for(pre_id in 1:length(pre_var_ls)){
   # Variable name for predictor
   pre_varname <- pre_var_ls[pre_id]
@@ -87,7 +135,7 @@ for(pre_id in 1:length(pre_var_ls)){
           24,36)
   message(pre_id,"out of",length(pre_var_ls))
 }
-
+}
 
 # Previous plotting codes =======================================================
 if(FALSE){

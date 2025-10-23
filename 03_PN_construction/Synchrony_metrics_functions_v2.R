@@ -227,6 +227,53 @@ summarize_syc_stats <- function(df,source_name,sink_name,res_varname,pre_varname
   return(out_df)
 }
 
+# This function is to get merged synchrony metrics of target response variable, for 2 source-sink pairs
+# Input include source and sink name for the two pairs
+# and response variable name
+merge_pair_syc_df <- function(source_name1,sink_name1,source_name2,sink_name2,res_varname){
+  # Read in Syc metrics df for the first source-sink pair
+  Syc_df1 <- read.csv(paste0(Syc_metrics_path,"Syc_metrics_df_",source_name1,"_",sink_name1,".csv")) %>%
+    dplyr::select(site_ID,contains(res_varname)) %>%
+    pivot_longer(
+      cols = contains(res_varname),
+      names_to = "Season",
+      values_to = "Response1"
+    ) %>%
+    mutate(
+      # Clean up season names
+      Season = sub(paste0("_", res_varname), "", Season),
+      Season = factor(Season, levels = c("FT", "GS", "NGS"))
+    )
+  
+  # Read in Syc metrics df for the second source-sink pair
+  Syc_df2 <- read.csv(paste0(Syc_metrics_path,"Syc_metrics_df_",source_name2,"_",sink_name2,".csv")) %>%
+    dplyr::select(site_ID,contains(res_varname)) %>%
+    pivot_longer(
+      cols = contains(res_varname),
+      names_to = "Season",
+      values_to = "Response2"
+    ) %>%
+    mutate(
+      # Clean up season names
+      Season = sub(paste0("_", res_varname), "", Season),
+      Season = factor(Season, levels = c("FT", "GS", "NGS"))
+    )
+  
+  # Merge these two df and predictors
+  Syc_df_merge <- Syc_df1 %>%
+    left_join(Syc_df2,by=c("site_ID","Season")) %>%
+    # Merge with predictors
+    left_join(predictor_df %>% dplyr::select(-X),by="site_ID") %>%
+    # Merge with site info
+    left_join(Site_info %>% dplyr::select(-X),by=c("site_ID" = "site_id")) %>%
+    # Calculate secondary response variables
+    mutate(
+      # Response1 - Response2
+      delta_response = Response1 - Response2,
+      ratio_response = Response1/Response2
+    )  
+  return(Syc_df_merge)
+}
 
 
 

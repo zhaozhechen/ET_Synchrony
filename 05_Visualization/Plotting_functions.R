@@ -1148,3 +1148,79 @@ heatmap_plot <- function(fill_name,season,palette_name,direction){
   return(g)
 }
 
+# This function is to make density curves for target variable
+# Input include:
+# df: input df
+# varname: target variable name
+# group_varname: varname used for color
+# color_pallete
+# x_intercept: intercept for plotting vertical line
+# x_title
+plot_pdf <- function(df,varname,group_varname,color_pallete,x_intercept,x_title){
+  g <- ggplot(df,aes(x=.data[[varname]],fill=.data[[group_varname]],color=.data[[group_varname]]))+
+    geom_density(alpha = 0.4,linewidth = 1)+
+    geom_vline(xintercept = x_intercept,linetype = "dashed",linewidth = 1)+
+    scale_color_manual(values = my_pallete)+
+    scale_fill_manual(values = my_pallete)+
+    my_theme+
+    theme(legend.position = c(0.15,0.85),
+          legend.background = element_blank())+
+    labs(x=x_title,color="",fill="")  
+  return(g)
+}
+
+# This function makes scatter plots of syc metrics vs predictors, color coded by season
+# Input include merged syc_df, with predictors merged, in long data form
+# the response and predictor variable name
+syc_scatter_long <- function(df_long,res_varname,pre_varname,y_title){
+  # Calculate R2 for each season
+  R2_df <- df_long %>%
+    group_by(Season) %>%
+    do({
+      mod <- lm(.data[[res_varname]] ~ .data[[pre_varname]], data = .)
+      s <- summary(mod)
+      tibble(
+        R2   = s$r.squared,
+        pval = coef(s)[2, 4]  # p-value for slope
+      )
+    }) %>%
+    ungroup() %>%
+    mutate(
+      # format p-values in ggsignif style
+      p_label = case_when(
+        pval < 0.001 ~ "***",
+        pval < 0.01  ~ "**",
+        pval < 0.05  ~ "*",
+        TRUE         ~ "ns"
+      ),
+      label = paste0(Season, ": R² = ", round(R2, 2),
+                     " (", p_label, ")")
+    )
+  
+  # Get location for labels
+  x_max <- max(df_long[[pre_varname]],na.rm=TRUE)
+  y_range <- range(df_long[[res_varname]],na.rm=TRUE)
+  y_span <- y_range[2] - y_range[1]
+  y_top <- y_range[2]
+  y_offset <- 0.15 * y_span
+  
+  # Make scatter plot
+  g <- ggplot(data=df_long,aes(x=.data[[pre_varname]],
+                               y=.data[[res_varname]],color=Season,fill=Season))+
+    geom_point(size=4,shape=21,alpha=0.8,color="black")+
+    # Add fitted line
+    geom_smooth(method = "lm",se = TRUE,linetype = "solid",alpha = 0.25)+
+    scale_color_manual(values = season_color)+
+    scale_fill_manual(values = season_color)+
+    geom_text(
+      data = R2_df,
+      aes(x = x_max,
+          y = y_top + 0.6 * y_span - (as.numeric(factor(Season))) * y_offset,
+          label = label, color = Season),
+      hjust = 1, vjust = 1, size = 5, show.legend = FALSE
+    ) +
+    my_theme+
+    labs(x = pre_varname,y = y_title,color="")
+  
+  return(g)
+}

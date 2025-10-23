@@ -80,6 +80,7 @@ results_all <- results_all %>%
 write.csv(results_all,paste0(Output_path,"Regression_summary.csv"))
 
 # Explore the results -------------------
+# Heat maps of linear regression ===============
 # Heat map of adjusted R2, grouped by 12 pairs of source and sink combinations
 # Replace negative adjusted R2 with 0
 results_all <- results_all %>%
@@ -95,7 +96,7 @@ for(season in c("FT","GS","NGS")){
   print_g(g_heatmaps,paste0("Heatmaps_",season),18,10)
 }
 
-
+# 
 
 
 
