@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
-# Date: 2025.10.22
+# Date: 2025.10.24
 
 # This code is to explore and analyze synchrony metrics
 
@@ -22,6 +22,7 @@ source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 
 # Output path for figures
 #Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_vs_predictors/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons/"
 
 # Colors for the three seasons
 season_color <- brewer.pal(3,"Set2")
@@ -56,39 +57,87 @@ sink_name2 <- "psi"
 # target response variable name
 res_varname <- "daily_p_TE"
 
-
-
 # Compare syc metrics across source-sink pairs =============
+# Making plots for delta of the target variable (e.g., daily_p_TE) between two source-sink pairs
 
-x_title <- "TE(psi,ET) - TE(ET,psi)"
+# Get title for the entire plot
+g_title <- paste("Comparison of",res_varname,"between",
+                 source_name1,"→",sink_name1,"vs",
+                 source_name2,"→",sink_name2,"\n",
+                 "Delta =",res_varname,"(",source_name1,",",sink_name1,") -",
+                 res_varname,"(",source_name2,",",sink_name2,")")
 
-# Initiliaze a list to store figures
-g_ls <- list()
-# Get merged syc metrics
+# Make merged syc metrics, only keep target response variable (e.g., daily_p_TE), and calculate delta_response
 pair_syc_df_merged <- merge_pair_syc_df(source_name1,sink_name1,source_name2,sink_name2,res_varname)
-# Get distribution of target variable, across seasons
-pdf_delta_response <- plot_pdf(pair_syc_df_merged,"delta_response","Season",
-                               season_color,x_intercept = 0, x_title = x_title)
-pdf_ratio_response <- plot_pdf(pair_syc_df_merged,"ratio_response","Season",
-                               season_color,x_intercept = 1, x_title = x_title)
+
+# Make plots for continuous values -----------------
+# Maps of Delta (difference in response variable between the two source-sink pairs) across seasons
+map_FT <- syc_map(pair_syc_df_merged %>% filter(Season == "FT"),
+                     "delta_response",palette_name = "RdYlBu","Delta",
+                     g_title = "Full Time Series",color_limits = c(-2,2))
+map_GS <- syc_map(pair_syc_df_merged %>% filter(Season == "GS"),
+                     "delta_response",palette_name = "RdYlBu","Delta",
+                     g_title = "Growing Season",color_limits = c(-2,2))
+map_NGS <- syc_map(pair_syc_df_merged %>% filter(Season == "NGS"),
+                     "delta_response",palette_name = "RdYlBu","Delta",
+                     g_title = "Non-Growing Season",color_limits = c(-2,2))
+
+# Combine these maps
+g_maps <- plot_grid(map_FT,map_GS,map_NGS,align = "hv",labels = "auto",nrow=1)
+
+# Initialize a list to store pdf and scatter plots
+g_ls <- list()
+# Get distributions of differences (delta) of response variable between the two source-sink pairs, across seasons
+g_ls[[1]] <- plot_pdf(pair_syc_df_merged,"delta_response","Season",
+                      season_color,x_intercept = 0, x_title = "Delta")
+
 # Make scatter plots across predictors
 for(pre_varname in pre_var_ls){
-  g_scatter <- syc_scatter_long(pair_syc_df_merged,"delta_response",pre_varname,x_title)
-  
-  
+  g_scatter <- syc_scatter_long(pair_syc_df_merged,"delta_response",pre_varname,y_title = "Delta")
+  g_ls[[length(g_ls)+1]] <- g_scatter
 }
 
+# Combine pdf and scatter plots
+g_scatters <- plot_grid(plotlist = g_ls,ncol=4,align = "hv",labels = letters[4:10])
+# Combine with maps
+g_all <- plot_grid(g_maps,g_scatters,align = "hv",
+                   nrow=2,
+                   rel_heights = c(1,2))
+# Add title to the entire plot
+g_all_titled <- plot_grid(
+  ggdraw() + 
+    draw_label(g_title, 
+               fontface = "bold", 
+               size = 14, 
+               x = 0.5, y = 0.5, 
+               hjust = 0.5, vjust = 0.5),
+  g_all,
+  ncol = 1,
+  rel_heights = c(0.08, 1) 
+)
 
+# Output this figure
+print_g(g_all_titled,paste0("Comparison_between_",source_name1,"-",sink_name1,"_vs_",source_name2,"-",sink_name2,"_continuous"),
+        12,9)
 
+# Make plots for binary values -------------------------
+# Convert delta_response to binary values
+pair_syc_df_merged_binary <- pair_syc_df_merged %>%
+  mutate(delta_response = if_else(delta_response > 0,"+","-"))
+my_color <- brewer.pal(11,"RdBu")[c(10,2)]
+# Maps of Delta (difference in response variable between the two source-sink pairs) across seasons
+map_FT <- syc_map_disc(pair_syc_df_merged_binary %>% filter(Season == "FT"),
+                  "delta_response","Delta",
+                  g_title = "Full Time Series")
+map_GS <- syc_map(pair_syc_df_merged %>% filter(Season == "GS"),
+                  "delta_response",palette_name = "RdYlBu","Delta",
+                  g_title = "Growing Season",color_limits = c(-2,2))
+map_NGS <- syc_map(pair_syc_df_merged %>% filter(Season == "NGS"),
+                   "delta_response",palette_name = "RdYlBu","Delta",
+                   g_title = "Non-Growing Season",color_limits = c(-2,2))
 
-my_pallete <- season_color
-group_varname <- "Season"
-varname <- "delta_response"
-x_intercept <- 0
-x_title <- bquote(delta~TE(psi))
-
-
-
+# Combine these maps
+g_maps <- plot_grid(map_FT,map_GS,map_NGS,align = "hv",labels = "auto",nrow=1)
 
 
 

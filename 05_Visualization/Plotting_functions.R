@@ -1156,7 +1156,7 @@ heatmap_plot <- function(fill_name,season,palette_name,direction){
 # color_pallete
 # x_intercept: intercept for plotting vertical line
 # x_title
-plot_pdf <- function(df,varname,group_varname,color_pallete,x_intercept,x_title){
+plot_pdf <- function(df,varname,group_varname,my_pallete,x_intercept,x_title){
   g <- ggplot(df,aes(x=.data[[varname]],fill=.data[[group_varname]],color=.data[[group_varname]]))+
     geom_density(alpha = 0.4,linewidth = 1)+
     geom_vline(xintercept = x_intercept,linetype = "dashed",linewidth = 1)+
