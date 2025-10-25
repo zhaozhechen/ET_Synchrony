@@ -1,0 +1,10 @@
+Source1,Sink1,Source2,Sink2
+psi,ET,ET,psi
+VPD,ET,ET,VPD
+TA,ET,ET,TA
+psi,ET,VPD,ET
+psi,ET,TA,ET
+TA,ET,VPD,ET
+psi,VPD,VPD,psi
+psi,TA,TA,psi
+TA,VPD,VPD,TA

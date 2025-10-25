@@ -16,6 +16,9 @@ Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 # Predictor df
 predictor_df <- read.csv("00_Data/perdictor_df.csv")
 
+# Source-sink pairs to test
+source_sink_pairs <- read.csv("00_Data/Source-sink_pairs.csv")
+
 # Source plotting functions
 source("05_Visualization/Plotting_functions.R")
 source("03_PN_construction/Synchrony_metrics_functions_v2.R")
@@ -48,150 +51,155 @@ pre_var_ls <- c("AI","CH","RD","TSand","elevation","porosity")
 If_plot <- FALSE
 
 # --------- Main ---------
-source_name1 <- "psi"
-sink_name1 <- 'ET'
-
-source_name2 <- "ET"
-sink_name2 <- "psi"
-
+# Compare syc metrics across source-sink pairs =============
+# Making plots for delta of the target variable (e.g., daily_p_TE) between two source-sink pairs
 # target response variable name
 res_varname <- "daily_p_TE"
 
-# Compare syc metrics across source-sink pairs =============
-# Making plots for delta of the target variable (e.g., daily_p_TE) between two source-sink pairs
-
-# Get title for the entire plot
-g_title <- paste("Comparison of",res_varname,"between",
-                 source_name1,"→",sink_name1,"vs",
-                 source_name2,"→",sink_name2,"\n",
-                 "Delta =",res_varname,"(",source_name1,",",sink_name1,") -",
-                 res_varname,"(",source_name2,",",sink_name2,")")
-
-# Make merged syc metrics, only keep target response variable (e.g., daily_p_TE), and calculate delta_response
-pair_syc_df_merged <- merge_pair_syc_df(source_name1,sink_name1,source_name2,sink_name2,res_varname)
-
-# Make plots for continuous values -----------------
-# Maps of Delta (difference in response variable between the two source-sink pairs) across seasons
-map_FT <- syc_map(pair_syc_df_merged %>% filter(Season == "FT"),
-                     "delta_response",palette_name = "RdYlBu","Delta",
-                     g_title = "Full Time Series",color_limits = c(-2,2))
-map_GS <- syc_map(pair_syc_df_merged %>% filter(Season == "GS"),
-                     "delta_response",palette_name = "RdYlBu","Delta",
-                     g_title = "Growing Season",color_limits = c(-2,2))
-map_NGS <- syc_map(pair_syc_df_merged %>% filter(Season == "NGS"),
+for(arrayid in 1:nrow(source_sink_pairs)){
+  source_name1 <- source_sink_pairs$Source1[arrayid]
+  sink_name1 <- source_sink_pairs$Sink1[arrayid]
+  source_name2 <- source_sink_pairs$Source2[arrayid]
+  sink_name2 <- source_sink_pairs$Sink2[arrayid]
+  
+  # Make merged syc metrics, only keep target response variable (e.g., daily_p_TE), and calculate delta_response
+  pair_syc_df_merged <- merge_pair_syc_df(source_name1,sink_name1,source_name2,sink_name2,res_varname)
+  
+  # Make plots for continuous values -----------------
+  # Get title for the entire plot
+  g_title <- paste("Comparison of",res_varname,"between",
+                   source_name1,"→",sink_name1,"vs",
+                   source_name2,"→",sink_name2,"\n",
+                   "Delta =",res_varname,"(",source_name1,",",sink_name1,") -",
+                   res_varname,"(",source_name2,",",sink_name2,")")
+  
+  # Maps of Delta (difference in response variable between the two source-sink pairs) across seasons
+  map_FT <- syc_map(pair_syc_df_merged %>% filter(Season == "FT"),
+                    "delta_response",palette_name = "RdYlBu","Delta",
+                    g_title = "Full Time Series",color_limits = c(-2,2))
+  map_GS <- syc_map(pair_syc_df_merged %>% filter(Season == "GS"),
+                    "delta_response",palette_name = "RdYlBu","Delta",
+                    g_title = "Growing Season",color_limits = c(-2,2))
+  map_NGS <- syc_map(pair_syc_df_merged %>% filter(Season == "NGS"),
                      "delta_response",palette_name = "RdYlBu","Delta",
                      g_title = "Non-Growing Season",color_limits = c(-2,2))
-
-# Combine these maps
-g_maps <- plot_grid(map_FT,map_GS,map_NGS,align = "hv",labels = "auto",nrow=1)
-
-# Initialize a list to store pdf and scatter plots
-g_ls <- list()
-# Get distributions of differences (delta) of response variable between the two source-sink pairs, across seasons
-g_ls[[1]] <- plot_pdf(pair_syc_df_merged,"delta_response","Season",
-                      season_color,x_intercept = 0, x_title = "Delta")
-
-# Make scatter plots across predictors
-for(pre_varname in pre_var_ls){
-  g_scatter <- syc_scatter_long(pair_syc_df_merged,"delta_response",pre_varname,y_title = "Delta")
-  g_ls[[length(g_ls)+1]] <- g_scatter
+  
+  # Combine these maps
+  g_maps <- plot_grid(map_FT,map_GS,map_NGS,align = "hv",labels = "auto",nrow=1)
+  
+  # Initialize a list to store pdf and scatter plots
+  g_ls <- list()
+  # Get distributions of differences (delta) of response variable between the two source-sink pairs, across seasons
+  g_ls[[1]] <- plot_pdf(pair_syc_df_merged,"delta_response","Season",
+                        season_color,x_intercept = 0, x_title = "Delta")
+  
+  # Make scatter plots across predictors
+  for(pre_varname in pre_var_ls){
+    g_scatter <- syc_scatter_long(pair_syc_df_merged,"delta_response",pre_varname,y_title = "Delta")
+    g_ls[[length(g_ls)+1]] <- g_scatter
+  }
+  
+  # Combine pdf and scatter plots
+  g_scatters <- plot_grid(plotlist = g_ls,ncol=4,align = "hv",labels = letters[4:10])
+  # Combine with maps
+  g_all <- plot_grid(g_maps,g_scatters,align = "hv",
+                     nrow=2,
+                     rel_heights = c(1,2))
+  # Add title to the entire plot
+  g_all_titled <- plot_grid(
+    ggdraw() + 
+      draw_label(g_title, 
+                 fontface = "bold", 
+                 size = 14, 
+                 x = 0.5, y = 0.5, 
+                 hjust = 0.5, vjust = 0.5),
+    g_all,
+    ncol = 1,
+    rel_heights = c(0.08, 1) 
+  )
+  
+  # Output this figure
+  print_g(g_all_titled,paste0("Comparison_between_",source_name1,"-",sink_name1,"_vs_",source_name2,"-",sink_name2,"_continuous"),
+          12,9)
+  
+  # Make plots for binary values-> Focus on direction (sign) -------------------------
+  # Get title for the entire plot
+  g_title <- paste("Comparison of",res_varname,"between",
+                   source_name1,"→",sink_name1,"vs",
+                   source_name2,"→",sink_name2,"\n",
+                   "+ =",res_varname,"(",source_name1,",",sink_name1,") >",
+                   res_varname,"(",source_name2,",",sink_name2,")")
+  
+  # Convert delta_response to binary values
+  pair_syc_df_merged_binary <- pair_syc_df_merged %>%
+    mutate(delta_response = if_else(delta_response > 0,"+","-")) %>%
+    # Remove NA
+    filter(!is.na(delta_response))
+  # This is for positive and negative colors
+  my_color <- brewer.pal(11,"RdBu")[c(10,2)]
+  # Maps of Delta (difference in response variable between the two source-sink pairs) across seasons
+  map_FT <- syc_map_disc(pair_syc_df_merged_binary %>% filter(Season == "FT"),
+                         "delta_response","Delta",
+                         g_title = "Full Time Series")
+  map_GS <- syc_map_disc(pair_syc_df_merged_binary %>% filter(Season == "GS"),
+                         "delta_response","Delta",
+                         g_title = "Growing Season")
+  map_NGS <- syc_map_disc(pair_syc_df_merged_binary %>% filter(Season == "NGS"),
+                          "delta_response","Delta",
+                          g_title = "Non-Growing Season")
+  
+  # Combine these maps
+  #g_maps <- plot_grid(map_FT,map_GS,map_NGS,align = "hv",labels = "auto",nrow=1)
+  
+  # Bar plot showing the percentage of positive vs negative during three seasons
+  g_prop_bar <- pair_syc_df_merged_binary %>%
+    count(Season, delta_response) %>%
+    group_by(Season) %>%
+    mutate(Prop = n / sum(n)) %>%
+    ggplot(aes(x = Season, y = Prop, fill = delta_response)) +
+    geom_bar(stat = "identity", color = "black") +
+    scale_fill_manual(values = my_color, name = "") +
+    labs(y = "Proportion", x = "") +
+    my_theme +
+    theme(legend.position = "top")
+  
+  g_row1 <- plot_grid(map_FT,map_GS,map_NGS,g_prop_bar,
+                      rel_widths = c(1,1,1,0.6), align = "v",labels = "auto",nrow=1)
+  # Initialize a list to store below figures
+  g_ls <- list()
+  # Proportion of positive (+) values across predictor bins
+  for(pre_varname in pre_var_ls){
+    g_prop_line <- prop_sign_plot(pair_syc_df_merged_binary,pre_varname,season_color)
+    g_prop_box <- prop_sign_box(pair_syc_df_merged_binary,pre_varname,my_color)
+    g_ls[[length(g_ls)+1]] <- g_prop_line
+    g_ls[[length(g_ls)+1]] <- g_prop_box
+  }
+  # Combine row2
+  g_row2 <- plot_grid(plotlist = g_ls,ncol=4,align = "hv",labels=letters[5:16])
+  
+  # Combine all plots
+  g_all <- plot_grid(g_row1,g_row2,nrow=2,
+                     align = "hv",rel_heights = c(1,3))
+  
+  # Add title to the entire plot
+  g_all_titled <- plot_grid(
+    ggdraw() + 
+      draw_label(g_title, 
+                 fontface = "bold", 
+                 size = 14, 
+                 x = 0.5, y = 0.5, 
+                 hjust = 0.5, vjust = 0.5),
+    g_all,
+    ncol = 1,
+    rel_heights = c(0.08, 1) 
+  )
+  
+  # Output this figure
+  print_g(g_all_titled,paste0("Comparison_between_",source_name1,"-",sink_name1,"_vs_",source_name2,"-",sink_name2,"_binary"),
+          16,12)
+  message(arrayid)
 }
 
-# Combine pdf and scatter plots
-g_scatters <- plot_grid(plotlist = g_ls,ncol=4,align = "hv",labels = letters[4:10])
-# Combine with maps
-g_all <- plot_grid(g_maps,g_scatters,align = "hv",
-                   nrow=2,
-                   rel_heights = c(1,2))
-# Add title to the entire plot
-g_all_titled <- plot_grid(
-  ggdraw() + 
-    draw_label(g_title, 
-               fontface = "bold", 
-               size = 14, 
-               x = 0.5, y = 0.5, 
-               hjust = 0.5, vjust = 0.5),
-  g_all,
-  ncol = 1,
-  rel_heights = c(0.08, 1) 
-)
-
-# Output this figure
-print_g(g_all_titled,paste0("Comparison_between_",source_name1,"-",sink_name1,"_vs_",source_name2,"-",sink_name2,"_continuous"),
-        12,9)
-
-# Make plots for binary values-> Focus on direction (sign) -------------------------
-# Convert delta_response to binary values
-pair_syc_df_merged_binary <- pair_syc_df_merged %>%
-  mutate(delta_response = if_else(delta_response > 0,"+","-")) %>%
-  # Remove NA
-  filter(!is.na(delta_response))
-# This is for positive and negative colors
-my_color <- brewer.pal(11,"RdBu")[c(10,2)]
-# Maps of Delta (difference in response variable between the two source-sink pairs) across seasons
-map_FT <- syc_map_disc(pair_syc_df_merged_binary %>% filter(Season == "FT"),
-                  "delta_response","Delta",
-                  g_title = "Full Time Series")
-map_GS <- syc_map_disc(pair_syc_df_merged_binary %>% filter(Season == "GS"),
-                       "delta_response","Delta",
-                       g_title = "Growing Season")
-map_NGS <- syc_map_disc(pair_syc_df_merged_binary %>% filter(Season == "NGS"),
-                       "delta_response","Delta",
-                       g_title = "Non-Growing Season")
-
-# Combine these maps
-g_maps <- plot_grid(map_FT,map_GS,map_NGS,align = "hv",labels = "auto",nrow=1)
-
-# Bar plot showing the percentage of positive vs negative during three seasons
-g_prop_bar <- pair_syc_df_merged_binary %>%
-  count(Season, delta_response) %>%
-  group_by(Season) %>%
-  mutate(Prop = n / sum(n)) %>%
-  ggplot(aes(x = Season, y = Prop, fill = delta_response)) +
-  geom_bar(stat = "identity", color = "black") +
-  scale_fill_manual(values = my_color, name = "Direction") +
-  labs(y = "Proportion", x = "Season") +
-  my_theme +
-  theme(legend.position = "top")
-
-# Proportion of positive (+) values across predictor bins
-for(pre_varname in pre_var_ls){
-  g_prop_line <- prop_sign_plot(pair_syc_df_merged_binary,pre_varname,season_color)
-}
-
-
-
-
-
-
-
-
-
-pair_syc_df_merged_binary %>%
-  mutate(AI_bin = cut(AI, breaks = quantile(AI, probs = seq(0, 1, 0.25), na.rm = TRUE))) %>%
-  group_by(AI_bin, Season) %>%
-  summarise(Prop_pos = mean(delta_response == "+", na.rm = TRUE)) %>%
-  ggplot(aes(x = AI_bin, y = Prop_pos, group = Season, color = Season)) +
-  geom_line(linewidth = 1) +
-  geom_point() +
-  labs(x = "Aridity Index (quartiles)", y = "Proportion of + (ψ→ET)") +
-  my_theme
-
-ggplot(pair_syc_df_merged_binary, aes(x = delta_response, y = AI, fill = delta_response)) +
-  geom_boxplot(outlier.shape = NA, alpha = 0.6) +
-  facet_wrap(~ Season) +
-  scale_fill_manual(values = my_color, name = "Direction") +
-  labs(x = "Direction", y = "Aridity Index") +
-  my_theme
-
-glm_dir <- glm(I(delta_response == "+") ~ AI + CH + RD + TSand + elevation + porosity, 
-               data = pair_syc_df_merged_binary, 
-               family = binomial)
-
-pair_syc_df_merged_binary %>%
-  select(Site, Season, delta_response) %>%
-  spread(Season, delta_response) %>%
-  count(FT, GS, NGS)
 
 # Scatter plots of syc metrics vs predictors for each of the 12 source-sink pairs ================
 if(If_plot){

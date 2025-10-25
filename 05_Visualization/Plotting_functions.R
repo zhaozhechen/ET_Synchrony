@@ -1163,7 +1163,7 @@ plot_pdf <- function(df,varname,group_varname,my_pallete,x_intercept,x_title){
     scale_color_manual(values = my_pallete)+
     scale_fill_manual(values = my_pallete)+
     my_theme+
-    theme(legend.position = c(0.15,0.85),
+    theme(legend.position = c(0.2,0.85),
           legend.background = element_blank())+
     labs(x=x_title,color="",fill="")  
   return(g)
@@ -1233,19 +1233,35 @@ syc_scatter_long <- function(df_long,res_varname,pre_varname,y_title){
 prop_sign_plot <- function(df,pre_varname,season_color){
   # Calculate proportion of positive values in each predictor bin
   df <- df %>%
-    filter(!is.na(.data[[pre_varname]]),!is.na(delta_response)) %>%
+    filter(!is.na(.data[[pre_varname]]),!is.na(delta_response))
+  
+  # Compute unique quantile breaks
+  q_breaks <- unique(quantile(df[[pre_varname]], probs = seq(0, 1, 0.2), na.rm = TRUE))
+  
+  # If fewer than 2 unique breaks, skip plotting
+  if(length(q_breaks) < 2){
+    warning(paste("Skipping", pre_varname, "- not enough unique quantile breaks"))
+    return(NULL)
+  }
+  
+  df <- df %>%
     mutate(
       # Bin predictors
       pred_bin = cut(.data[[pre_varname]],
-                     breaks = quantile(.data[[pre_varname]],probs = seq(0,1,0.2),na.rm=TRUE),
+                     breaks = q_breaks,
                      include.lowest=TRUE)
     ) %>%
     group_by(pred_bin,Season) %>%
     summarise(Prop_pos = mean(delta_response == "+",na.rm=TRUE),.groups = "drop")
   # Make plot
-  g <- ggplot(data=df,aes(x = pred_bin,y=Prop_pos,group=Season,color=Season,fill=Season))+
+  g <- ggplot(data=df,aes(x = as.numeric(pred_bin),y=Prop_pos,group=Season,color=Season,fill=Season))+
     geom_line(linewidth = 1)+
     geom_point(shape=21,size=4,color="black")+
+    scale_x_continuous(
+      breaks = 1:5,
+      labels = c("0.2", "0.4", "0.6", "0.8", "1.0"),
+      name = paste(pre_varname, "quantiles")
+    ) +
     scale_color_manual(values=season_color)+
     scale_fill_manual(values=season_color)+
     labs(x=paste(pre_varname,"quantiles"),
@@ -1254,5 +1270,53 @@ prop_sign_plot <- function(df,pre_varname,season_color){
     my_theme+
     theme(legend.position = c(0.15,0.85),
           legend.background = element_blank())
+  return(g)
+}
+
+# This function is to make boxplot and violin plots for delta-signs across predictor
+prop_sign_box <- function(df,pre_varname,my_color){
+  # remove NAs
+  df_clean <- df %>% filter(!is.na(.data[[pre_varname]]), !is.na(delta_response))
+  
+  # run significance test (Wilcoxon) by Season
+  sig_df <- df_clean %>%
+    group_by(Season) %>%
+    summarise(
+      p_value = tryCatch(
+        wilcox.test(.data[[pre_varname]] ~ delta_response)$p.value,
+        error = function(e) NA_real_
+      ),
+      .groups = "drop"
+    ) %>%
+    mutate(sig_label = case_when(
+      p_value <= 0.001 ~ "***",
+      p_value <= 0.01  ~ "**",
+      p_value <= 0.05  ~ "*",
+      TRUE ~ "ns"
+    ))
+  
+  # find top y position for label placement
+  y_pos <- max(df_clean[[pre_varname]], na.rm = TRUE) + 
+    (range(df_clean[[pre_varname]])[2] - range(df_clean[[pre_varname]])[1]) * 0.1
+  
+  g <- ggplot(df_clean,aes(x = delta_response,y=.data[[pre_varname]],
+                     fill=delta_response,color=delta_response))+
+    geom_half_violin(alpha=0.5,color=NA)+
+    geom_boxplot(width=0.1,color="black",outlier.color = NA)+
+    geom_jitter(aes(x = as.numeric(as.factor(delta_response))+0.2),
+                position = position_jitter(width=0.1),
+                alpha=0.7)+
+    scale_color_manual(values=my_color)+
+    scale_fill_manual(values=my_color)+
+    facet_wrap(~Season)+
+    geom_text(
+      data=sig_df,
+      aes(x=1.5,y=y_pos,label=sig_label),
+      inherit.aes = FALSE,
+      size=5,color="red"
+    )+
+    my_theme+
+    labs(x="",y=pre_varname)
+  
   return(g)
 }
