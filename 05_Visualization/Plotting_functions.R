@@ -1320,3 +1320,27 @@ prop_sign_box <- function(df,pre_varname,my_color){
   
   return(g)
 }
+
+plot_delta_heatmaps <- function(results_delta_all, fill_name,season,palette_name,direction) {
+  g <- ggplot(results_delta_all %>% filter(Season == season),
+              aes(x = predictor,y=pair,
+                  fill = if_else(pval < 0.05,.data[[fill_name]],NA)))+
+    geom_tile(color="white",linewidth = 0.3)+
+    scale_fill_distiller(
+      palette = palette_name,
+      na.value = "grey",
+      direction = direction,
+      guide = guide_colorbar(
+        frame.colour = "black",
+        ticks.colour = "black"
+      )
+    )+
+    facet_wrap(~ response,ncol=4)+
+    my_theme+
+    labs(x = "",y="",fill=fill_name)+
+    theme(legend.position = "right",
+          axis.text.x = element_text(angle = 45, hjust = 1))+
+    ggtitle(season)  
+  return(g)
+}
+

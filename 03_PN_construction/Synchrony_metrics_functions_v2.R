@@ -275,5 +275,50 @@ merge_pair_syc_df <- function(source_name1,sink_name1,source_name2,sink_name2,re
   return(Syc_df_merge)
 }
 
+# This function is to summarize regression results of delta_response between two source-sink pairs vs predictors
+# For 3 seasons
+# Input includes merged synchrony metrics df, with delta_response calculated, and predictors
+summarize_delta_stats <- function(df, source_name1, sink_name1, source_name2, sink_name2, 
+                                  res_varname, pre_var_ls) {
+  out_ls <- list()
+  
+  for (pre_varname in pre_var_ls) {
+    for (season in unique(df$Season)) {
+      # Only keep data for this season
+      df_sub <- df %>%
+        filter(Season == season, !is.na(delta_response), !is.na(.data[[pre_varname]])) %>%
+        mutate(pred_scaled = scales::rescale(.data[[pre_varname]],to=c(0,1)))
+      
+      # Skip if insufficient data
+      if (nrow(df_sub) < 5) next
+      
+      # Fit linear regression of delta_response vs predictor
+      mod <- lm(delta_response ~ pred_scaled, data = df_sub)
+      s <- summary(mod)
+      
+      out_ls[[length(out_ls) + 1]] <- tibble(
+        Season = season,
+        response = res_varname,
+        predictor = pre_varname,
+        pair = paste0(source_name1, "→", sink_name1, " vs ", source_name2, "→", sink_name2),
+        R2_adj = s$adj.r.squared,
+        k = coef(mod)[2],
+        pval = coef(s)[2, 4]
+      )
+    }
+  }
+  
+  out_df <- bind_rows(out_ls) %>%
+    mutate(
+      signif = case_when(
+        pval < 0.001 ~ "***",
+        pval < 0.01  ~ "**",
+        pval < 0.05  ~ "*",
+        TRUE         ~ "ns"
+      )
+    )
+  
+  return(out_df)
+}
 
 

@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
-# Date: 2025.10.24
+# Date: 2025.10.25
 
 # This code is to explore and analyze synchrony metrics
 
@@ -54,7 +54,7 @@ If_plot <- FALSE
 # Compare syc metrics across source-sink pairs =============
 # Making plots for delta of the target variable (e.g., daily_p_TE) between two source-sink pairs
 # target response variable name
-res_varname <- "best_lag"
+res_varname <- "daily_p_TE"
 
 for(arrayid in 1:nrow(source_sink_pairs)){
   source_name1 <- source_sink_pairs$Source1[arrayid]
