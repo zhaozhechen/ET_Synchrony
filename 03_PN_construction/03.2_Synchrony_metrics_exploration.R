@@ -120,26 +120,78 @@ g_all_titled <- plot_grid(
 print_g(g_all_titled,paste0("Comparison_between_",source_name1,"-",sink_name1,"_vs_",source_name2,"-",sink_name2,"_continuous"),
         12,9)
 
-# Make plots for binary values -------------------------
+# Make plots for binary values-> Focus on direction (sign) -------------------------
 # Convert delta_response to binary values
 pair_syc_df_merged_binary <- pair_syc_df_merged %>%
-  mutate(delta_response = if_else(delta_response > 0,"+","-"))
+  mutate(delta_response = if_else(delta_response > 0,"+","-")) %>%
+  # Remove NA
+  filter(!is.na(delta_response))
+# This is for positive and negative colors
 my_color <- brewer.pal(11,"RdBu")[c(10,2)]
 # Maps of Delta (difference in response variable between the two source-sink pairs) across seasons
 map_FT <- syc_map_disc(pair_syc_df_merged_binary %>% filter(Season == "FT"),
                   "delta_response","Delta",
                   g_title = "Full Time Series")
-map_GS <- syc_map(pair_syc_df_merged %>% filter(Season == "GS"),
-                  "delta_response",palette_name = "RdYlBu","Delta",
-                  g_title = "Growing Season",color_limits = c(-2,2))
-map_NGS <- syc_map(pair_syc_df_merged %>% filter(Season == "NGS"),
-                   "delta_response",palette_name = "RdYlBu","Delta",
-                   g_title = "Non-Growing Season",color_limits = c(-2,2))
+map_GS <- syc_map_disc(pair_syc_df_merged_binary %>% filter(Season == "GS"),
+                       "delta_response","Delta",
+                       g_title = "Growing Season")
+map_NGS <- syc_map_disc(pair_syc_df_merged_binary %>% filter(Season == "NGS"),
+                       "delta_response","Delta",
+                       g_title = "Non-Growing Season")
 
 # Combine these maps
 g_maps <- plot_grid(map_FT,map_GS,map_NGS,align = "hv",labels = "auto",nrow=1)
 
+# Bar plot showing the percentage of positive vs negative during three seasons
+g_prop_bar <- pair_syc_df_merged_binary %>%
+  count(Season, delta_response) %>%
+  group_by(Season) %>%
+  mutate(Prop = n / sum(n)) %>%
+  ggplot(aes(x = Season, y = Prop, fill = delta_response)) +
+  geom_bar(stat = "identity", color = "black") +
+  scale_fill_manual(values = my_color, name = "Direction") +
+  labs(y = "Proportion", x = "Season") +
+  my_theme +
+  theme(legend.position = "top")
 
+# Proportion of positive (+) values across predictor bins
+for(pre_varname in pre_var_ls){
+  g_prop_line <- prop_sign_plot(pair_syc_df_merged_binary,pre_varname,season_color)
+}
+
+
+
+
+
+
+
+
+
+pair_syc_df_merged_binary %>%
+  mutate(AI_bin = cut(AI, breaks = quantile(AI, probs = seq(0, 1, 0.25), na.rm = TRUE))) %>%
+  group_by(AI_bin, Season) %>%
+  summarise(Prop_pos = mean(delta_response == "+", na.rm = TRUE)) %>%
+  ggplot(aes(x = AI_bin, y = Prop_pos, group = Season, color = Season)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  labs(x = "Aridity Index (quartiles)", y = "Proportion of + (ψ→ET)") +
+  my_theme
+
+ggplot(pair_syc_df_merged_binary, aes(x = delta_response, y = AI, fill = delta_response)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+  facet_wrap(~ Season) +
+  scale_fill_manual(values = my_color, name = "Direction") +
+  labs(x = "Direction", y = "Aridity Index") +
+  my_theme
+
+glm_dir <- glm(I(delta_response == "+") ~ AI + CH + RD + TSand + elevation + porosity, 
+               data = pair_syc_df_merged_binary, 
+               family = binomial)
+
+pair_syc_df_merged_binary %>%
+  select(Site, Season, delta_response) %>%
+  spread(Season, delta_response) %>%
+  count(FT, GS, NGS)
 
 # Scatter plots of syc metrics vs predictors for each of the 12 source-sink pairs ================
 if(If_plot){

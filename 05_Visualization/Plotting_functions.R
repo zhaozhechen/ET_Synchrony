@@ -1224,3 +1224,35 @@ syc_scatter_long <- function(df_long,res_varname,pre_varname,y_title){
   
   return(g)
 }
+
+# This function is to bin the proportion of positive values into bins of predictors
+# Then make a line plot showing the three seasons
+# Input includes the df, with delta_response as in binary (+ or -)
+# pre_varname: predictor name
+# season_color
+prop_sign_plot <- function(df,pre_varname,season_color){
+  # Calculate proportion of positive values in each predictor bin
+  df <- df %>%
+    filter(!is.na(.data[[pre_varname]]),!is.na(delta_response)) %>%
+    mutate(
+      # Bin predictors
+      pred_bin = cut(.data[[pre_varname]],
+                     breaks = quantile(.data[[pre_varname]],probs = seq(0,1,0.2),na.rm=TRUE),
+                     include.lowest=TRUE)
+    ) %>%
+    group_by(pred_bin,Season) %>%
+    summarise(Prop_pos = mean(delta_response == "+",na.rm=TRUE),.groups = "drop")
+  # Make plot
+  g <- ggplot(data=df,aes(x = pred_bin,y=Prop_pos,group=Season,color=Season,fill=Season))+
+    geom_line(linewidth = 1)+
+    geom_point(shape=21,size=4,color="black")+
+    scale_color_manual(values=season_color)+
+    scale_fill_manual(values=season_color)+
+    labs(x=paste(pre_varname,"quantiles"),
+         y="Proportion of + values",
+         color="",fill="")+
+    my_theme+
+    theme(legend.position = c(0.15,0.85),
+          legend.background = element_blank())
+  return(g)
+}
