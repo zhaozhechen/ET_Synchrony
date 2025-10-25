@@ -54,7 +54,7 @@ If_plot <- FALSE
 # Compare syc metrics across source-sink pairs =============
 # Making plots for delta of the target variable (e.g., daily_p_TE) between two source-sink pairs
 # target response variable name
-res_varname <- "daily_p_TE"
+res_varname <- "best_lag"
 
 for(arrayid in 1:nrow(source_sink_pairs)){
   source_name1 <- source_sink_pairs$Source1[arrayid]
@@ -64,6 +64,12 @@ for(arrayid in 1:nrow(source_sink_pairs)){
   
   # Make merged syc metrics, only keep target response variable (e.g., daily_p_TE), and calculate delta_response
   pair_syc_df_merged <- merge_pair_syc_df(source_name1,sink_name1,source_name2,sink_name2,res_varname)
+  
+  # If delta in lags between two source-sink pairs is < 0, then it should be plus 24
+  if(res_varname == "best_lag"){
+    pair_syc_df_merged <- pair_syc_df_merged %>%
+      mutate(delta_response = if_else(delta_response < 0,delta_response + 24,delta_response))
+  }
   
   # Make plots for continuous values -----------------
   # Get title for the entire plot
@@ -76,13 +82,13 @@ for(arrayid in 1:nrow(source_sink_pairs)){
   # Maps of Delta (difference in response variable between the two source-sink pairs) across seasons
   map_FT <- syc_map(pair_syc_df_merged %>% filter(Season == "FT"),
                     "delta_response",palette_name = "RdYlBu","Delta",
-                    g_title = "Full Time Series",color_limits = c(-2,2))
+                    g_title = "Full Time Series",color_limits = c(0,24))
   map_GS <- syc_map(pair_syc_df_merged %>% filter(Season == "GS"),
                     "delta_response",palette_name = "RdYlBu","Delta",
-                    g_title = "Growing Season",color_limits = c(-2,2))
+                    g_title = "Growing Season",color_limits = c(0,24))
   map_NGS <- syc_map(pair_syc_df_merged %>% filter(Season == "NGS"),
                      "delta_response",palette_name = "RdYlBu","Delta",
-                     g_title = "Non-Growing Season",color_limits = c(-2,2))
+                     g_title = "Non-Growing Season",color_limits = c(0,24))
   
   # Combine these maps
   g_maps <- plot_grid(map_FT,map_GS,map_NGS,align = "hv",labels = "auto",nrow=1)
@@ -119,7 +125,7 @@ for(arrayid in 1:nrow(source_sink_pairs)){
   )
   
   # Output this figure
-  print_g(g_all_titled,paste0("Comparison_between_",source_name1,"-",sink_name1,"_vs_",source_name2,"-",sink_name2,"_continuous"),
+  print_g(g_all_titled,paste0(res_varname,"_comparison_between_",source_name1,"-",sink_name1,"_vs_",source_name2,"-",sink_name2,"_continuous"),
           12,9)
   
   # Make plots for binary values-> Focus on direction (sign) -------------------------
@@ -195,7 +201,7 @@ for(arrayid in 1:nrow(source_sink_pairs)){
   )
   
   # Output this figure
-  print_g(g_all_titled,paste0("Comparison_between_",source_name1,"-",sink_name1,"_vs_",source_name2,"-",sink_name2,"_binary"),
+  print_g(g_all_titled,paste0(res_varname,"comparison_between_",source_name1,"-",sink_name1,"_vs_",source_name2,"-",sink_name2,"_binary"),
           16,12)
   message(arrayid)
 }
