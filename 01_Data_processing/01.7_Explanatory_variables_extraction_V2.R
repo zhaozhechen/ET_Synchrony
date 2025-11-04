@@ -24,6 +24,11 @@ MUKEY <- rast("D:/OneDrive - UW-Madison/Research/ET Synchrony/Data/03_Misc/MUKEY
 # Data path for canopy height from GLAD
 CH_raster <- rast("D:/OneDrive - UW-Madison/Research/ET Synchrony/Data/03_Misc/Forest_height_2019_NAM.tif")
 
+# Combined raster from ECOSTRESS results
+combined_raster <- readRDS("D:/OneDrive - UW-Madison/Research/ET Synchrony/Data/ECOSTRESS_partial_results/Combined_raster.rds")
+
+Output_path <- "00_Data/"
+
 # ----- Main -------
 # Get site coordinates
 sites <- site_info %>%
@@ -54,5 +59,15 @@ sites_texture <- sites %>%
   ungroup()
 
 # Extract and match Canopy Height ===================================
+sites_texture$CH_GLAD <- terra::extract(CH_raster,site_pts,method="bilinear")[,2]
+
+# Extract AI values
+sites_texture$AI <- as.data.frame(terra::extract(combined_raster,site_pts,method="bilinear"))$AI
+
+# Extract Rooting Depth values
+sites_texture$RD <- as.data.frame(terra::extract(combined_raster,site_pts,method="bilinear"))$RD
+
+# Output this df
+write.csv(sites_texture,paste0(Output_path,"perdictor_df_updated.csv"))
 
 
