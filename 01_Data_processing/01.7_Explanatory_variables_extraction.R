@@ -1,7 +1,8 @@
 # Author: Zhaozhe Chen
-# Date: 2025.10.21
+# Date: 2025.11.4
 
 # This code is to extract explanatory variables from remote sensing dataset
+# Data sources should be replaced by data at their native spatial scales
 
 library(raster)
 library(sf)

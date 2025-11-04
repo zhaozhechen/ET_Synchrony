@@ -3,8 +3,6 @@
 
 # This code matches soil properties to AMF sites
 # Sites of Wetland or Water are filtered out
-# Matches Aridity index (AI)
-# Note: AI and climate zone need to be updated !!!!!
 
 # ---------- Global ---------------
 library(here)
