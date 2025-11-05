@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
-# Date: 2025.10.25
+# Date: 2025.11.4
 
 # This code is to plot heatmap of delta_response between source-sink pairs vs predictors
 
@@ -15,7 +15,7 @@ Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hour
 Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 
 # Predictor df
-predictor_df <- read.csv("00_Data/perdictor_df.csv")
+predictor_df <- read.csv("00_Data/perdictor_df_updated.csv")
 
 # Source-sink pairs to test
 source_sink_pairs <- read.csv("00_Data/Source-sink_pairs.csv")
@@ -27,9 +27,9 @@ source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 # Response variable list
 res_var_ls <- c("daily_p_TE","daily_agg_TE","best_lag","mem1","mem2","mem3","mem4","mem5")
 # Predictor variable list
-pre_var_ls <- c("AI","CH","RD","TSand","elevation","porosity")
+pre_var_ls <- c("AI","CH_GLAD","RD","AVG_CLAY","AVG_SILT","elevation","porosity")
 
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_updated/"
 
 # ---- Main -------
 # Initialize a list to store all regression results
