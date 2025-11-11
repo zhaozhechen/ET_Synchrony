@@ -1344,3 +1344,47 @@ plot_delta_heatmaps <- function(results_delta_all, fill_name,season,palette_name
   return(g)
 }
 
+# This function is to make chord diagram
+# Input include:
+# plot_df: df of sychrony metrics between pairs, for both directions. Should have 4 columns
+# cols. Colors of the bands
+# var_order: order of variables
+plot_chord_diagram <- function(plot_df,cols,var_order){
+  # Ribbon color = whichever direction is stronger for that pair
+  ribbon_cols <- ifelse(
+    plot_df$value_direct1 >= plot_df$value_direct2,
+    cols[as.character(plot_df$from)],   # color by 'from'
+    cols[as.character(plot_df$to)]      # color by 'to'
+  )  
+  
+  circos.clear()
+  circos.par(start.degree = 90, 
+             gap.after = rep(4, length(unique(c(plot_df$from,plot_df$to)))),
+             track.height = 0.05)
+  chordDiagram(
+    x = plot_df[,1:4],
+    order = var_order,
+    grid.col = cols,
+    col = ribbon_cols,
+    transparency = 0.5,
+    directional = 1,
+    diffHeight = 0,
+    link.sort = TRUE,
+    link.largest.ontop = TRUE,
+    annotationTrack = "grid",
+    preAllocateTracks = list(track.height = 0.001)
+  )
+  circos.trackPlotRegion(track.index = 1, bg.border = NA, panel.fun = function(x, y) {
+    sector <- get.cell.meta.data("sector.index")
+    xlim   <- get.cell.meta.data("xlim")
+    ylim   <- get.cell.meta.data("ylim")
+    
+    # smaller ticks
+    circos.axis(h = "top", labels = FALSE, major.tick.length = convert_y(3, "mm"))
+    
+    # bigger labels; psi as expression
+    lab_map <- list(ET = expression(Delta~ET), VPD = expression(Delta~VPD), TA = expression(Delta~"T"), psi = expression(Delta~psi))
+    circos.text(mean(xlim), ylim[1] + 50, labels = lab_map[[sector]],
+                facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5), cex = 2)
+  })
+}

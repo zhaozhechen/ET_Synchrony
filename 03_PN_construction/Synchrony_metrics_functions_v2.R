@@ -321,7 +321,6 @@ summarize_delta_stats <- function(df, source_name1, sink_name1, source_name2, si
   return(out_df)
 }
 
-
 # This function is to get mean of target synchrony metric across target sites for all source-sink pairs
 # Then return a df of target synchrony metric at both directions for each source-sink pairs
 # Site_ls: target sites to aggregate
