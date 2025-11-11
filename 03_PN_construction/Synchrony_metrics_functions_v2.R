@@ -322,3 +322,46 @@ summarize_delta_stats <- function(df, source_name1, sink_name1, source_name2, si
 }
 
 
+# This function is to get mean of target synchrony metric across target sites for all source-sink pairs
+# Then return a df of target synchrony metric at both directions for each source-sink pairs
+# Site_ls: target sites to aggregate
+# var_comb: source-sink combinations
+# Syc_metrics_path: Input path for synchrony metrics for 12 pairs
+# season: "GS","NGS" or "FT"
+# target_syc_metric_name: name for the target synchrony metric
+get_target_syc_metric <- function(Site_ls,var_comb,Syc_metrics_path,season,target_syc_metric_name){
+  # column name that has the target synchrony metric
+  metric_col <- paste0(season,"_",target_syc_metric_name)
+  syc_metric_sites_mean <- c()
+  # Loop over source-sink combinations
+  for(arrayid in 1:nrow(var_comb)){
+    # Source variable name
+    source_name <- var_comb$from[arrayid]
+    # Sink variable name
+    sink_name <- var_comb$to[arrayid]
+    # Read in synchrony metrics df
+    syc_df <- read.csv(paste0(Syc_metrics_path,"Syc_metrics_df_",source_name,"_",sink_name,".csv"))
+    # Get metric values for the target sites
+    syc_metric_sites <- syc_df[syc_df$site_ID %in% Site_ls,metric_col]
+    # Get the mean of them
+    syc_metric_sites_mean <- c(syc_metric_sites_mean,mean(syc_metric_sites,na.rm=TRUE))
+  }
+  # Add this to var_comb
+  var_comb$syc_metric <- syc_metric_sites_mean 
+  
+  # Convert var_comb, so that there are two values for the two directions between each source-sink pair
+  df_plot <- var_comb %>%
+    rename(value_direct1 = syc_metric) %>%
+    left_join(var_comb %>%
+                rename(value_direct2 = syc_metric,
+                       from = to,
+                       to = from),
+              by = c("from","to")) %>%
+    mutate(from_chr = as.character(from),
+           to_chr = as.character(to)) %>%
+    filter(from_chr < to_chr) %>%
+    dplyr::select(-from_chr,-to_chr) %>%
+    # Remove NA
+    filter(!is.na(value_direct1) & !is.na(value_direct2))
+  return(df_plot)
+}
