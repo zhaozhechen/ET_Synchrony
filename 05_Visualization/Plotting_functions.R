@@ -1357,16 +1357,26 @@ plot_chord_diagram <- function(plot_df,cols,var_order){
     cols[as.character(plot_df$to)]      # color by 'to'
   )  
   
+  # save/restore ONLY what we change (do NOT capture mfrow)
+  old_par <- par(c("mar","xaxs","yaxs"))
+  on.exit(par(old_par), add = TRUE)
+  par(mar = c(0,0,0,0), xaxs = "i", yaxs = "i")
+  
   circos.clear()
   circos.par(start.degree = 90, 
              gap.after = rep(4, length(unique(c(plot_df$from,plot_df$to)))),
-             track.height = 0.05)
+             track.height = 0.05,
+             cell.padding = c(0,0,0,0),
+             canvas.xlim = c(-1.2,1.2),
+             canvas.ylim = c(-1.2,1.2),
+             points.overflow.warning = FALSE)
+  
   chordDiagram(
     x = plot_df[,1:4],
     order = var_order,
     grid.col = cols,
     col = ribbon_cols,
-    transparency = 0.5,
+    transparency = 0.2,
     directional = 1,
     diffHeight = 0,
     link.sort = TRUE,
@@ -1374,17 +1384,28 @@ plot_chord_diagram <- function(plot_df,cols,var_order){
     annotationTrack = "grid",
     preAllocateTracks = list(track.height = 0.001)
   )
+  
   circos.trackPlotRegion(track.index = 1, bg.border = NA, panel.fun = function(x, y) {
     sector <- get.cell.meta.data("sector.index")
     xlim   <- get.cell.meta.data("xlim")
     ylim   <- get.cell.meta.data("ylim")
     
     # smaller ticks
-    circos.axis(h = "top", labels = FALSE, major.tick.length = convert_y(3, "mm"))
+    circos.axis(h = "top", labels = FALSE, 
+                major.tick.length = convert_y(1.5, "mm"),
+                minor.ticks = 0)
     
     # bigger labels; psi as expression
-    lab_map <- list(ET = expression(Delta~ET), VPD = expression(Delta~VPD), TA = expression(Delta~"T"), psi = expression(Delta~psi))
-    circos.text(mean(xlim), ylim[1] + 50, labels = lab_map[[sector]],
-                facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5), cex = 2)
+    lab_map <- list(ET = "ΔET", 
+                    VPD = "ΔVPD", 
+                    TA = "ΔT", 
+                    psi = "Δψ")
+    
+    circos.text(mean(xlim), ylim[1] + 140, labels = lab_map[[sector]],
+                facing = "bending", niceFacing = TRUE, adj = c(0.5, 0.5), cex = 2)
   })
 }
+
+
+
+
