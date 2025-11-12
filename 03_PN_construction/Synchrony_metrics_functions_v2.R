@@ -409,8 +409,8 @@ make_group_chord_diagram <- function(
   W <- ncol * panel_w
   H <- nrow * panel_h
   
-  pdf_path <- file.path(Output_path, paste0(title, ".pdf"))
-  png_path <- file.path(Output_path, paste0(title, ".png"))
+  pdf_path <- file.path(Output_path, paste0(title,"-",season,"-",target_syc_metric_name,".pdf"))
+  png_path <- file.path(Output_path, paste0(title,"-",season,"-",target_syc_metric_name,".png"))
   
   # --- Combined PDF (Unicode-safe) ---
   grDevices::cairo_pdf(pdf_path, width = W, height = H, family = "sans")
