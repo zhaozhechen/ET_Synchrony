@@ -13,6 +13,7 @@ library(vegan)
 library(corrplot)
 library(Hmisc) # this is for correlation matrix
 library(reshape2)
+library(RColorBrewer)
 
 # Data path ==============================
 # Path to synchrony metrics df 
@@ -32,23 +33,27 @@ var_ls <- c("ET","psi","VPD","TA")
 var_comb <- expand.grid(from = var_ls,to = var_ls) %>%
   filter(from != to)
 
+# List of synchrony metric names
+target_syc_metric_name_ls <- c("daily_agg_TE","daily_p_TE")
+# List of their name labels
+target_syc_metric_label_ls <- list(bquote(DailyTE~"("~psi~"→"~ET~")"),bquote(TE[max]))
+
 # arrayid determines the source and sink variable 
 arrayid <- 1
 # season includes "GS","NGS","FT". Determines which season to consider
 season <- "GS"
-# target_syc_metric_name determines which synchrony metric to consider
-#target_syc_metric_name <- "daily_agg_TE"
-target_syc_metric_name <- "daily_p_TE"
-# The corresponding label for this target syc metric
-#target_syc_metric_label <- bquote(DailyTE~"("~psi~"→"~ET~")")
-target_syc_metric_label <- bquote(TE[max])
+# Determine which syc metric to process
+syc_id <- 1
+target_syc_metric_name <- target_syc_metric_name_ls[syc_id]
+target_syc_metric_label <- target_syc_metric_label_ls[[syc_id]]
 
 # Predictors to include
-pre_var_ls <- c("AVG_SILT","AVG_CLAY","elevation","porosity","CH_GLAD","AI","RD")
+pre_var_ls <- c("AVG_SILT","AVG_CLAY","elevation","porosity","CH_GLAD","AI","RD",
+                "avg_air_temp_degC","avg_precip_mm","Koppen_clim_class","IGBP_veg")
 
-# Labels for all variables
-my_label <- c(target_syc_metric_label,"Silt (%)","Clay (%)","Elevation",
-              "Porosity","Canopy height","Aridity index","Rooting depth")
+# Labels for all predictors
+pre_var_label_ls <- list("Silt (%)","Clay (%)","Elevation","Porosity","Canopy height","Aridity index","Rooting depth",
+                      bquote("Long-term"~T[air]),"Long-term P","Koppen Climate Class","PFT")
 
 # ------ Main ----------
 # Step 1. Process synchrony metrics and match with predictors ============
@@ -68,9 +73,46 @@ syc_df <- syc_df %>%
             by="site_id")
   
 # Step 2. Correlation matrix ==============
-CM <- Hmisc::rcorr(as.matrix(syc_df[,-1]),type = "spearman")
-g_CM <- plot_CM(CM)
-print_g(g_CM,paste0("CM_",season,"_",target_syc_metric_name,"_",source_name,"_",sink_name),8,8)
+# Remove categorical data
+CM <- Hmisc::rcorr(as.matrix(syc_df[,-c(1,12,13)]),type = "spearman")
+# Labels for the variables
+my_label <- c(target_syc_metric_label,pre_var_label_ls[-c(10,11)])
+g_CM <- plot_CM(CM,my_label)
+print_g(g_CM,paste0("CM_",season,"_",target_syc_metric_name,"_",source_name,"_",sink_name),10,10)
+
+# Remove highly correlated variables from the predictors (r > 0.65)
+pre_var_ls <- pre_var_ls[-c(1,4,9)]
+pre_var_label_ls <- pre_var_label_ls[-c(1,4,9)]
+
+# Step 3. SLR of syc metric vs predictors ================
+# predictor names, excluding categorical data for SLR
+pre_var_ls_SLR <- pre_var_ls[-c(7,8)]
+# Corresponding name labels
+pre_var_label_ls_SLR <- pre_var_label_ls[-c(7,8)]
+
+# Initialize a list to store figures
+g_scatter_ls <- list()
+for(i in 1:length(pre_var_ls_SLR)){
+  # Get predictor name
+  pred_name <- pre_var_ls_SLR[i]
+  # Its label name
+  pred_label <- pre_var_label_ls_SLR[[i]]
+  
+  # Make scatter plots
+  g_scatter <- scatter_vars(syc_df,pred_name,paste0(season,"_",target_syc_metric_name),
+                            group_name = "IGBP_veg",xtitle = pred_label,ytitle = target_syc_metric_label,
+                            my_color = brewer.pal(11,"Set3"))+
+    theme(legend.position = "top")
+  g_scatter_ls[[i]] <- g_scatter
+}
+g_scatter <- plot_grid(plotlist = g_scatter_ls,nrow=2,align = "hv")
+print_g(g_scatter,paste0("Scatter_",season,"_",target_syc_metric_name,"_",source_name,"_",sink_name),10,8)
+
+# Step 4. MLR of syc metric vs predictors ================
+
+
+#MLR_fit <- lm(Y_scaled~X_scaled)
+
 
 
 

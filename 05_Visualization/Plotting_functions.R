@@ -1414,7 +1414,7 @@ get_lower_tri<-function(cormat){
 
 # This function is to make correlation matrix plot
 # Input is the correlation matrix derived from Hmisc::rcorr
-plot_CM <- function(CM){
+plot_CM <- function(CM,my_label){
   # Get lower r
   CM_r <- get_lower_tri(CM$r)
   # Get lower p
@@ -1430,7 +1430,9 @@ plot_CM <- function(CM){
       P < 0.01 ~ "**",
       P < 0.05 ~ "*",
       P >= 0.05 ~ NA
-    )) %>%
+    ),
+    r_label = sprintf("%.2f",value),
+    label = ifelse(is.na(P),r_label,paste0(r_label,"\n",P))) %>%
     filter(!is.na(value))
   my_color <- rev(RColorBrewer::brewer.pal(11,"RdBu"))
   # Make plot of correlation matrix
@@ -1439,7 +1441,7 @@ plot_CM <- function(CM){
     scale_fill_gradientn(colours = my_color,
                          na.value = "white",
                          limits= c(-1,1))+
-    geom_text(aes(label = P))+
+    geom_text(aes(label = label))+
     theme(axis.text.x = element_text(angle = 45,hjust=1),
           axis.line=element_line(color="black",size=0.2),
           panel.background = element_blank(),
