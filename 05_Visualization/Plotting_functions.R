@@ -1406,6 +1406,59 @@ plot_chord_diagram <- function(plot_df,cols,var_order){
   })
 }
 
+# Function to Get lower triangle of the correlation matrix
+get_lower_tri<-function(cormat){
+  cormat[upper.tri(cormat)] <- NA
+  return(cormat)
+}
 
+# This function is to make correlation matrix plot
+# Input is the correlation matrix derived from Hmisc::rcorr
+plot_CM <- function(CM){
+  # Get lower r
+  CM_r <- get_lower_tri(CM$r)
+  # Get lower p
+  CM_p <- get_lower_tri(CM$P)
+  # Reshape the correlation matrix
+  CM_df <- melt(CM_r)
+  CM_df$P <- melt(CM_p)$value
+  # Remove rows where Var1 = Var2
+  CM_df <- CM_df %>%
+    filter(Var1 != Var2) %>%
+    mutate(P = case_when(
+      P < 0.001 ~ "***",
+      P < 0.01 ~ "**",
+      P < 0.05 ~ "*",
+      P >= 0.05 ~ NA
+    )) %>%
+    filter(!is.na(value))
+  my_color <- rev(RColorBrewer::brewer.pal(11,"RdBu"))
+  # Make plot of correlation matrix
+  g_CM <- ggplot(CM_df,aes(x=Var1,y=Var2,fill=value))+
+    geom_tile(color="white")+
+    scale_fill_gradientn(colours = my_color,
+                         na.value = "white",
+                         limits= c(-1,1))+
+    geom_text(aes(label = P))+
+    theme(axis.text.x = element_text(angle = 45,hjust=1),
+          axis.line=element_line(color="black",size=0.2),
+          panel.background = element_blank(),
+          text = element_text(size=16),
+          axis.text = element_text(size=16),
+          panel.border = element_rect(colour="black",fill=NA,size=1),
+          legend.frame = element_rect(color="black"),
+          legend.ticks = element_line(color="black"),
+          legend.title = element_text(margin = margin(b=15)),
+          axis.ticks = element_line(size=0.2,color="black"),
+          axis.ticks.length = unit(0.05,'in'),
+          panel.grid.major = element_line(color="grey"),
+          legend.position = c(0.15,0.8),
+          legend.background = element_rect(color="black"),
+          legend.margin = margin(10,15,15,15))+
+    labs(fill = "Spearman\nCorrelation",x="",y="")+
+    scale_x_discrete(labels=my_label[-1])+
+    scale_y_discrete(labels=my_label)
+  return(g_CM)
+}
 
 
