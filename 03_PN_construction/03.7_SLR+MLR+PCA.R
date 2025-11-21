@@ -43,7 +43,7 @@ pre_var_cont_ls <- c("AVG_SILT","AVG_CLAY","elevation","porosity","CH_GLAD","AI"
                      "avg_air_temp_degC","avg_precip_mm")
 
 # Labels for all predictors
-pre_var_cont_label_ls <- list("Silt (%)","Clay (%)","Elevation","Porosity","Canopy height","Aridity index","Rooting depth",
+pre_var_cont_label_ls <- list("Silt%","Clay%","Elevation","Porosity","Canopy height","Aridity index","Rooting depth",
                               bquote("Long-term"~T[air]),"Long-term P")
 
 # Determine metrics to process ===========
@@ -54,7 +54,7 @@ season <- "GS"
 # Determine which syc metric to process
 syc_id <- 2
 # Log transformation of elevation?
-log_ele <- FALSE
+log_ele <- TRUE
 
 # Remove highly correlated variables from the predictors (r > 0.7)
 # Remove Silt (highly correlated with clay and porosity)
@@ -68,6 +68,8 @@ if(log_ele == TRUE){
   predictor_df$elevation <- log(predictor_df$elevation)
   pre_var_cont_label_ls[pre_var_cont_label_ls=="Elevation"] <- "log(Elevation)"
 }
+
+label_lookup <- setNames(pre_var_cont_label_ls,pre_var_cont_ls)
 
 # Get target synchrony metric name
 target_syc_metric_name <- paste0(season,"_",target_syc_metric_name_ls[syc_id])
@@ -87,7 +89,10 @@ syc_df <- syc_df %>%
   left_join(predictor_df %>%
               select(c(site_id,pre_var_cont_ls,Koppen_clim_class,IGBP_veg)),
             by="site_id")
-
+# Add Climate zone to sites that have NA Koppen_clim_class
+syc_df$Koppen_clim_class[syc_df$site_id == "US-Akn"] <- "Cfa"
+syc_df$Koppen_clim_class[syc_df$site_id == "US-Cop"] <- "Bsk"
+syc_df$Koppen_clim_class[syc_df$site_id == "US-Lin"] <- "Csa"
 # Step 2. Correlation matrix ==============
 # Construct correlation matrix
 CM <- Hmisc::rcorr(as.matrix(syc_df[c(target_syc_metric_name,pre_var_cont_ls)]),type = "spearman")
@@ -102,7 +107,6 @@ cor_df <- broom::tidy(CM) %>%
   filter(column2 == target_syc_metric_name) %>%
   mutate(p_color = ifelse(p.value < 0.05, "p < 0.05","p > 0.05"))
 
-label_lookup <- setNames(pre_var_cont_label_ls,pre_var_cont_ls)
 g_r <- ggplot(data=cor_df,aes(y=reorder(column1,estimate),x=estimate,fill=p_color))+
   geom_col(color="black") +
   my_theme+
@@ -151,9 +155,14 @@ MLR_fit <- lm(MLR_f,data=syc_df_scaled)
 
 # Step 5. PCA ===========================
 # Run PCA: predictors = active, synchrony = supplementary quantitative variables
-syc_PCA_df <- syc_df[c(paste0(target_syc_metric_name),pre_var_cont_ls)]
+syc_PCA_df <- syc_df[c(target_syc_metric_name,pre_var_cont_ls,"IGBP_veg","Koppen_clim_class")]
 # Only keep complete values
 syc_PCA_df <- na.omit(syc_PCA_df)
+# Extract IGBP and Koppen climate for later match
+PCA_IGBP <- syc_PCA_df$IGBP_veg
+PCA_Koppen <- syc_PCA_df$Koppen_clim_class
+syc_PCA_df <- syc_PCA_df %>%
+  select(-IGBP_veg,-Koppen_clim_class)
 
 res.pca <- PCA(
   syc_PCA_df,
@@ -161,24 +170,93 @@ res.pca <- PCA(
   graph = FALSE,
   # Index for quantitative supplementary variables
   quanti.sup = 1
-  # Index for qualitative supplementary variables
-  #quali.sup = c(8,9)
 )
 
 # Find the two PCs with the highest correlations with target syc metrics
-PCa <- which(order(res.pca$quanti.sup$coord)==1)
-PCb <- which(order(res.pca$quanti.sup$coord)==2)
+PC_idx <- order(abs(res.pca$quanti.sup$coord),decreasing = TRUE)[1:2]
 
 # Plotting PC1 + PC2
 g_PC1 <- fviz_pca_var(res.pca, repel = TRUE, col.var = "black")
 # Plotting the PCs where TE loads are higher
-g_PC2 <- fviz_pca_var(res.pca,axes = c(PCa,PCb),repel=TRUE,col.var="black")
+g_PC2 <- fviz_pca_var(res.pca,axes = c(PC_idx[1],PC_idx[2]),repel=TRUE,col.var="black")
 
 g_PC <- plot_grid(g_PC1,g_PC2,nrow=1,align="hv")
 print_g(g_PC,paste0("PC_",target_syc_metric_name,"_",source_name,"_",sink_name),8,4)
 
+# Varimax rotation ========================
+# # of components to rotate (depending on res.pca$quanti.sup$coord)
+k <- 3
+# Determines which 2 PCs to plot. NOTE: THIS CAN BE CHANGED BASED ON THE CORRELATION BETWEEN LOADINGS AND TARGET (TE_cor_rot)
+PC_rot_idx <- c(1,3)
+# Unrotated loadings
+L_unrot <- res.pca$var$coord[, 1:k] 
+# Apply orthogonal varimax rotation
+rot <- stats::varimax(L_unrot)        # rotated loadings + rotation matrix
+L_rot <- as.matrix(rot$loadings)      # rotated loadings (p x k)
+Rmat  <- rot$rotmat                   # k x k rotation matrix
 
+# Unrotated individual scores (sites) on PCs 1..k
+S_unrot <- as.matrix(res.pca$ind$coord[, 1:k])   # n x k
+# Rotated individual scores:
+S_rot <- S_unrot %*% Rmat    # n x k matrix
 
+# Correlation of response (syc metric) with rotated components
+syc_vec <- syc_PCA_df[[target_syc_metric_name]]
+TE_cor_rot <- apply(S_rot, 2, function(z) cor(z, syc_vec, use = "pairwise.complete.obs"))
 
+# This is df of loadings of predictors
+load_df <- data.frame(
+  var  = rownames(L_rot),
+  Dim1 = L_rot[, PC_rot_idx[1]],
+  Dim2 = L_rot[, PC_rot_idx[2]]
+)
+
+#load_df$label <- c(pre_var_cont_label_expr[load_df$var])
+
+# Add sychrony metric arrow, as supplementary variable 
+syc_arrow <- data.frame(
+  label = target_syc_metric_name,
+  Dim1 = TE_cor_rot[PC_rot_idx[1]],
+  Dim2 = TE_cor_rot[PC_rot_idx[2]]
+) 
+
+# Variance explained by each rotated PC
+SS_rot <- colSums(L_rot^2)
+prop_var <- SS_rot/sum(SS_rot)
+# Get Labels for the 2 PC
+pc1_lab_txt <- paste0("Rotated PC1 (",round(prop_var[PC_rot_idx[1]]*100,1),"%)")
+pc2_lab_txt <- paste0("Rotated PC2 (",round(prop_var[PC_rot_idx[2]]*100,1),"%)")
+
+ind_df <- data.frame(
+  Dim1 = S_rot[, PC_rot_idx[1]]/5,
+  Dim2 = S_rot[, PC_rot_idx[2]]/5,
+  IGBP = PCA_IGBP,
+  Climate = PCA_Koppen
+)
+
+# Make rotated PC biplot, overlapped with IGBP
+g_PC_vars_rot <- ggplot(load_df, aes(x = Dim1, y = Dim2)) +
+  geom_hline(yintercept = 0, color = "grey80") +
+  geom_vline(xintercept = 0, color = "grey80") +
+  geom_point(data=ind_df,aes(x=Dim1,y=Dim2,color=IGBP),
+             size=3,alpha=0.7)+
+  scale_color_manual(values = brewer.pal(11,"Set3"))+
+  geom_segment(aes(x = 0, y = 0, xend = Dim1, yend = Dim2),
+               arrow = arrow(length = unit(0.2, "cm")),
+               color = "grey30",linewidth=0.8) +
+  geom_text_repel(aes(label = var), size = 5) +
+  coord_equal() +
+  my_theme+
+  labs(x = pc1_lab_txt, y = pc2_lab_txt,color="")+
+  geom_segment(data = syc_arrow,
+               aes(x = 0, y = 0, xend = Dim1, yend = Dim2),
+               arrow = arrow(length = unit(0.25, "cm")),
+               color = brewer.pal(1,"Set1")[1], linewidth = 0.8)+
+  geom_text_repel(data=syc_arrow,
+                  aes(x= Dim1,y=Dim2,label=label),
+                  size=5)+
+  theme(legend.position = "right")
+
+print_g(g_PC_vars_rot,paste0("PCA_varimax_",target_syc_metric_name,"_",source_name,"_",sink_name),6,5)
 
 
