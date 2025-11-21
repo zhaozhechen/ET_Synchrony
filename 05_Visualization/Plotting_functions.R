@@ -31,7 +31,8 @@ my_theme <- theme(
   axis.title = element_text(size=14),
   legend.position = "none",
   strip.background = element_rect(color="black",fill="grey90"),
-  strip.text = element_text(face = "bold",size=14)
+  strip.text = element_text(face = "bold",size=14),
+  plot.margin = margin(15,15,15,15)
 )
 
 # Theme for maps
@@ -1457,7 +1458,7 @@ plot_CM <- function(CM,my_label){
           legend.position = c(0.15,0.8),
           legend.background = element_rect(color="black"),
           legend.margin = margin(10,15,15,15))+
-    labs(fill = "Spearman\nCorrelation",x="",y="")+
+    labs(fill = "Spearman ρ",x="",y="")+
     scale_x_discrete(labels=my_label[-1])+
     scale_y_discrete(labels=my_label)
   return(g_CM)
