@@ -127,6 +127,8 @@ make_group_chord_diagram(group_col = "AI_class",
 
 # For each site =====================
 make_group_chord_diagram(group_col = "site_id",
+                         panel_w = 4,
+                         panel_h = 4,
                          title = "Sites",
                          Site_info = Site_info,
                          var_comb = var_comb,

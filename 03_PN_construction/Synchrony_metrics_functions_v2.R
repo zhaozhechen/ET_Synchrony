@@ -419,7 +419,7 @@ make_group_chord_diagram <- function(
   
   par(mfrow = c(nrow, ncol),
       mar = c(0, 0, 3, 0),  # small top margin to fit group label
-      oma = c(0, 0, 0, 0),
+      oma = c(2, 2, 2, 2),
       xaxs = "i", yaxs = "i")
   
   for (i in seq_len(k)) {
@@ -435,7 +435,7 @@ make_group_chord_diagram <- function(
       units = "in", width = W, height = H, res = 600, type = "cairo")
   par(mfrow = c(nrow, ncol),
       mar = c(0, 0, 3, 0),
-      oma = c(0, 0, 0, 0),
+      oma = c(2, 2, 2, 2),
       xaxs = "i", yaxs = "i")
   
   for (i in seq_len(k)) {

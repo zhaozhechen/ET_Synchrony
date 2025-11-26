@@ -8,6 +8,7 @@ library(data.table)
 library(gghalves)
 library(stringr)
 library(sf)
+library(ggrepel)
 
 # Make CONUS boundary
 # Whole US map
@@ -1361,7 +1362,7 @@ plot_chord_diagram <- function(plot_df,cols,var_order){
   # save/restore ONLY what we change (do NOT capture mfrow)
   old_par <- par(c("mar","xaxs","yaxs"))
   on.exit(par(old_par), add = TRUE)
-  par(mar = c(0,0,0,0), xaxs = "i", yaxs = "i")
+  par(mar = c(2,2,2,2), xaxs = "i", yaxs = "i")
   
   circos.clear()
   circos.par(start.degree = 90, 
@@ -1402,8 +1403,8 @@ plot_chord_diagram <- function(plot_df,cols,var_order){
                     TA = "ΔT", 
                     psi = "Δψ")
     
-    circos.text(mean(xlim), ylim[1] + 140, labels = lab_map[[sector]],
-                facing = "bending", niceFacing = TRUE, adj = c(0.5, 0.5), cex = 2)
+    circos.text(mean(xlim), ylim[1] + 160, labels = lab_map[[sector]],
+                facing = "bending", niceFacing = TRUE, adj = c(0.5, 0.5), cex = 3)
   })
 }
 
