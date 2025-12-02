@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Date: 2025.11.4
+# Date: 2025.12.1
 
 # This code is to match Clay and Silt fractions with site info
 # Data for soil texture/clay/sand/silt is from SSURGO
@@ -26,6 +26,9 @@ CH_raster <- rast("D:/OneDrive - UW-Madison/Research/ET Synchrony/Data/03_Misc/F
 
 # Combined raster from ECOSTRESS results
 combined_raster <- readRDS("D:/OneDrive - UW-Madison/Research/ET Synchrony/Data/ECOSTRESS_partial_results/Combined_raster.rds")
+
+# Aridity index map
+AI_raster <- rast("00_Data/2022_CONUS_AI.tif")
 
 Output_path <- "00_Data/"
 
@@ -62,10 +65,12 @@ sites_texture <- sites %>%
 sites_texture$CH_GLAD <- terra::extract(CH_raster,site_pts,method="bilinear")[,2]
 
 # Extract AI values
-sites_texture$AI <- as.data.frame(terra::extract(combined_raster,site_pts,method="bilinear"))$AI
+#sites_texture$AI <- as.data.frame(terra::extract(combined_raster,site_pts,method="bilinear"))$AI
+sites_texture$AI_gridded <- terra::extract(AI_raster,site_pts,method = "bilinear")[,2]
 
 # Extract Rooting Depth values
 sites_texture$RD <- as.data.frame(terra::extract(combined_raster,site_pts,method="bilinear"))$RD
+
 
 # Output this df
 write.csv(sites_texture,paste0(Output_path,"perdictor_df_updated.csv"))
