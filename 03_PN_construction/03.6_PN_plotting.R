@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Date: 2025.11.11
+# Date: 2025.12.1
 
 # This code is to plot Process Network Chord diagram
 # Reference: https://jokergoo.github.io/circlize_book/book/the-chorddiagram-function.html#directional-relations
@@ -36,7 +36,7 @@ cols <- c(ET=my_colors[1], psi=my_colors[2], VPD=my_colors[4], TA=my_colors[3])
 Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Aggregated_Chord_diagrams/"
 
 # target synchrony metric name to be plotted in the chord diagram
-target_syc_metric_name <- "daily_agg_TE"
+target_syc_metric_name <- "daily_p_TE"
 # Season to be plotted
 season <- "GS"
 
@@ -52,7 +52,7 @@ Site_info$CONUS <- "CONUS"
 
 # Match Aridity Index
 Site_info <- Site_info %>%
-  left_join(predictor_df %>% select(site_id,AI),by="site_id") %>%
+  left_join(predictor_df %>% dplyr::select(site_id,AI = AI_gridded),by="site_id") %>%
   mutate(AI_class = case_when(
     AI < 0.05 ~ "Hyperarid",
     AI >= 0.05 & AI < 0.2 ~ "Arid",
@@ -63,6 +63,7 @@ Site_info <- Site_info %>%
 Site_info$AI_class[Site_info$site_id == "US-KS1"] <- "Humid"
 Site_info$AI_class[Site_info$site_id == "US-KS2"] <- "Humid"
 Site_info$AI_class[Site_info$site_id == "US-xDS"] <- "Humid"
+Site_info$AI_class <- factor(Site_info$AI_class,levels=c("Hyperarid","Arid","Semiarid","Subhumid","Humid"))
 
 # Across CONUS ==============
 make_group_chord_diagram(group_col = "CONUS",

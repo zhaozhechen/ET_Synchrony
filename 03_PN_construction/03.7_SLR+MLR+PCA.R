@@ -39,7 +39,7 @@ target_syc_metric_name_ls <- c("daily_agg_TE","daily_p_TE")
 target_syc_metric_label_ls <- list(bquote(DailyAggTE~"("~psi~"→"~ET~")"),bquote(TE[max]))
 
 # Continuous Predictors to include. Note: these are the initial predictors to include.
-pre_var_cont_ls <- c("AVG_SILT","AVG_CLAY","elevation","porosity","CH_GLAD","AI","RD",
+pre_var_cont_ls <- c("AVG_SILT","AVG_CLAY","elevation","porosity","CH_GLAD","AI_gridded","RD",
                      "avg_air_temp_degC","avg_precip_mm")
 
 # Labels for all predictors
@@ -82,12 +82,12 @@ sink_name <- var_comb$to[arrayid]
 syc_df <- read.csv(paste0(syc_metrics_path,"Syc_metrics_df_",source_name,"_",sink_name,".csv"))
 # Extract only the target synchrony metric
 syc_df <- syc_df %>%
-  select(site_ID,target_syc_metric_name) %>%
+  dplyr::select(site_ID,target_syc_metric_name) %>%
   rename(site_id = site_ID)
 # Get required predictors and merge with response (synchrony metric)
 syc_df <- syc_df %>%
   left_join(predictor_df %>%
-              select(c(site_id,pre_var_cont_ls,Koppen_clim_class,IGBP_veg)),
+              dplyr::select(c(site_id,pre_var_cont_ls,Koppen_clim_class,IGBP_veg)),
             by="site_id")
 # Add Climate zone to sites that have NA Koppen_clim_class
 syc_df$Koppen_clim_class[syc_df$site_id == "US-Akn"] <- "Cfa"
@@ -162,7 +162,7 @@ syc_PCA_df <- na.omit(syc_PCA_df)
 PCA_IGBP <- syc_PCA_df$IGBP_veg
 PCA_Koppen <- syc_PCA_df$Koppen_clim_class
 syc_PCA_df <- syc_PCA_df %>%
-  select(-IGBP_veg,-Koppen_clim_class)
+  dplyr::select(-IGBP_veg,-Koppen_clim_class)
 
 res.pca <- PCA(
   syc_PCA_df,
