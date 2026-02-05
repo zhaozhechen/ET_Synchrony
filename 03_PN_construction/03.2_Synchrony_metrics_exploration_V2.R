@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Date: 2025.11.25
+# Update Date: 2025.12.11
 
 # This code is to debug previous results about psi -> ET vs ET -> psi
 
@@ -13,8 +13,8 @@ Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hour
 # Updated site info
 Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 
-# Predictor df
-predictor_df <- read.csv("00_Data/perdictor_df.csv")
+# Predictor df, with updated AI_gridded
+predictor_df <- read.csv("00_Data/perdictor_df_updated.csv")
 
 # Source-sink pairs to test
 source_sink_pairs <- read.csv("00_Data/Source-sink_pairs.csv")
@@ -26,17 +26,75 @@ source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 # Output path of figures
 Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/"
 
-# Response synchrony metric name
-res_varname <- "daily_p_TE"
-
 season <- "GS"
-
-# Determines which source-sink pair to test
-arrayid <- 1
 
 my_color <- RColorBrewer::brewer.pal(5,"Set2")[c(1,2)]
 
 # ----- Main -------
+# Distributions of target syc metric =================================
+# Name of target variable
+res_varname <- "daily_agg_TE"
+res_name <- paste0(season,"_",res_varname)
+
+source_name1 <- "psi"
+sink_name1 <- "ET"
+source_name2 <- "VPD"
+sink_name2 <- "ET"
+source_name3 <- "ET"
+sink_name3 <- "psi"
+
+syc_df1 <- read.csv(paste0(Syc_metrics_path,"Syc_metrics_df_",source_name1,"_",sink_name1,".csv")) %>%
+  mutate(source_sink = paste0(source_name1,"_",sink_name1))
+syc_df2 <- read.csv(paste0(Syc_metrics_path,"Syc_metrics_df_",source_name2,"_",sink_name2,".csv")) %>%
+  mutate(source_sink = paste0(source_name2,"_",sink_name2))
+syc_df3 <- read.csv(paste0(Syc_metrics_path,"Syc_metrics_df_",source_name3,"_",sink_name3,".csv")) %>%
+  mutate(source_sink = paste0(source_name3,"_",sink_name3))
+  
+syc_df <- rbind(syc_df1,syc_df2,syc_df3) %>%
+  merge(predictor_df %>%
+          rename(site_ID = site_id),by="site_ID")
+
+# Get the mean and median of target syc metric
+syc_mean1 <- mean(syc_df1[[res_name]],na.rm=TRUE)
+syc_median1 <- median(syc_df1[[res_name]],na.rm=TRUE)
+
+syc_mean2 <- mean(syc_df2[[res_name]],na.rm=TRUE)
+syc_median2 <- median(syc_df2[[res_name]],na.rm=TRUE)
+
+syc_mean3 <- mean(syc_df3[[res_name]],na.rm=TRUE)
+syc_median3 <- median(syc_df3[[res_name]],na.rm=TRUE)
+
+syc_3_colors <- brewer.pal(10,"Set3")[c(1,3,6)]
+# Get distribution of target variable
+g_hist <- ggplot(data=syc_df,aes(x=.data[[res_name]],color=source_sink))+
+  geom_density(fill=NA,linewidth=1)+
+  #geom_histogram()+
+  my_theme+
+  theme(legend.position = "right")+
+  labs(color="",x=res_varname)+
+  scale_color_manual(values = c("ET_psi" = syc_3_colors[1],
+                                "psi_ET" = syc_3_colors[2],
+                                "VPD_ET" = syc_3_colors[3]))+
+  geom_vline(data = data.frame(source_sink = c(paste0(source_name1,"_",sink_name1),
+                                               paste0(source_name2,"_",sink_name2),
+                                               paste0(source_name3,"_",sink_name3)),
+                               medians = c(syc_median1,syc_median2,syc_median3),
+                               means = c(syc_mean1,syc_mean2,syc_mean3)),
+             aes(xintercept = means,color=source_sink),
+             linetype = "dashed",
+             linewidth=1)
+print_g(g_hist,paste0("Source-sink_pair-comparisons/",res_name,"_distributions"),5.5,4)
+
+
+
+
+# Comparing target syc metric between two source-sink pairs =================
+# Response synchrony metric name
+res_varname <- "best_lag"
+
+# Determines which source-sink pair to test
+arrayid <- 1
+
 source_name1 <- source_sink_pairs$Source1[arrayid]
 sink_name1 <- source_sink_pairs$Sink1[arrayid]
 source_name2 <- source_sink_pairs$Source2[arrayid]
@@ -78,3 +136,9 @@ g <- ggplot()+
                   aes(x=longitude,y=latitude,label = site_ID))+
   map_theme
 print_g(g,"Source-sink_pair-comparisons/daily_p_TE_psi_ET_greater_than_ET_psi",5,4)
+
+
+
+
+
+
