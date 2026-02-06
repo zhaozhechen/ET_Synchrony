@@ -1,7 +1,7 @@
 # Author: Zhaozhe Chen
 # Date: 2026.2.5
 
-# This code is to explore and analyze synchrony metrics
+# This code is to make maps for Delta
 
 # -------- Global ----------
 library(dplyr)

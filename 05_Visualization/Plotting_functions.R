@@ -9,6 +9,7 @@ library(gghalves)
 library(stringr)
 library(sf)
 library(ggrepel)
+library(wesanderson)
 
 # Make CONUS boundary
 # Whole US map
@@ -683,34 +684,77 @@ TE_norm_lag_plot <- function(TE_df_tmp,p_lag,p_TE,mem,m_color){
 # g_title: Title
 # color_limits: need an input for the global range for three seasons, so maps of different
 # seasons share the same color bar
-syc_map <- function(df,varname,palette_name,legend_title,g_title,color_limits){
-  g <- ggplot()+
-    geom_sf(data=CONUS,fill="grey",color="black",alpha=0.3)+
-    geom_point(data=df,aes(x=longitude,y=latitude,
-                           fill=.data[[varname]]),
-               size=5,alpha=0.8,shape=21,color="black")+
-    scale_fill_distiller(
-      palette = palette_name, direction = -1,
-      limits = color_limits,
-      oob = scales::squish,  # keeps values inside limits
-      breaks = seq(color_limits[1], color_limits[2], length.out = 5),
-      labels = function(x){
-        labs <- as.character(x)
-        labs[1] <- paste0("≤ ", labs[1])   # add ≤ to min
-        labs[length(labs)] <- paste0("≥ ", labs[length(labs)]) # add ≥ to max
-        labs
-      },
-      guide = guide_colorbar(
-        ticks = TRUE,
-        frame.colour = "black",
-        ticks.colour = "black"
-      )
-    )+
-    labs(fill = legend_title)+
-    ggtitle(g_title)+
+syc_map <- function(df, varname,
+                    palette_name = NULL,
+                    colors = NULL,
+                    legend_title = "",
+                    g_title = "",
+                    color_limits = NULL,
+                    direction = -1,
+                    n_breaks = 5,
+                    end_marks = c("left", "right"),   # choose: "left", "right", or both, or character(0)
+                    left_mark = "\u2264",             # "≤"
+                    right_mark = "\u2265"             # "≥"
+) {
+  
+  # ---- checks ----
+  if (is.null(palette_name) && is.null(colors)) {
+    stop("Provide either `palette_name` or `colors`.")
+  }
+  if (!is.null(palette_name) && !is.null(colors)) {
+    stop("Provide only one of `palette_name` or `colors`, not both.")
+  }
+  if (is.null(color_limits) || length(color_limits) != 2) {
+    stop("`color_limits` must be length 2: c(min, max).")
+  }
+  end_marks <- intersect(end_marks, c("left", "right"))
+  
+  # ---- base plot ----
+  g <- ggplot() +
+    geom_sf(data = CONUS, fill = "grey", color = "black", alpha = 0.3) +
+    geom_point(
+      data = df,
+      aes(x = longitude.x, y = latitude.x, fill = .data[[varname]]),
+      size = 5, alpha = 0.8, shape = 21, color = "black"
+    ) +
+    labs(fill = legend_title) +
+    ggtitle(g_title) +
     map_theme
+  
+  # ---- label function ----
+  label_fun <- function(x) {
+    labs <- as.character(x)
+    if (length(labs) >= 2) {
+      if ("left" %in% end_marks)  labs[1] <- paste0(left_mark, " ", labs[1])
+      if ("right" %in% end_marks) labs[length(labs)] <- paste0(right_mark, " ", labs[length(labs)])
+    }
+    labs
+  }
+  
+  # ---- common scale args ----
+  scale_args <- list(
+    limits = color_limits,
+    oob = scales::squish,
+    breaks = seq(color_limits[1], color_limits[2], length.out = n_breaks),
+    labels = label_fun,
+    guide = guide_colorbar(
+      ticks = TRUE,
+      frame.colour = "black",
+      ticks.colour = "black"
+    )
+  )
+  
+  # ---- choose scale ----
+  if (!is.null(colors)) {
+    g <- g + do.call(scale_fill_gradientn, c(list(colours = colors), scale_args))
+  } else {
+    g <- g + do.call(scale_fill_distiller, c(list(palette = palette_name, direction = direction), scale_args))
+  }
+  
   return(g)
 }
+
+
 
 # This is the same map function but for discrete values
 syc_map_disc <- function(df,varname,legend_title,g_title){

@@ -448,4 +448,16 @@ make_group_chord_diagram <- function(
   
 }
 
+# This function is to read synchrony metric df
+# Input include the source and sink variable name
+# Syc_metrics_path is the path for storing synchrony metric df
+read_syc_df <- function(source_name,sink_name,Syc_metrics_path){
+  df <- read.csv(paste0(Syc_metrics_path,"Syc_metrics_df_",source_name,"_",sink_name,".csv")) %>%
+    mutate(source_sink = paste0(source_name,"_",sink_name))
+  return(df)
+}
+
+
+
+
 
