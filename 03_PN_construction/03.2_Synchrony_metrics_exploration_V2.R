@@ -1,11 +1,12 @@
 # Author: Zhaozhe Chen
 # Update Date: 2026.2.6
 
-# This code is to debug previous results about psi -> ET vs ET -> psi
+# This code is to explore synchrony strength among pairs
 
 # -------- Global ----------
 library(dplyr)
 library(tidyr)
+library(ggpubr)
 
 # Input path for Synchrony metrics for 12 pairs
 Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
@@ -24,18 +25,17 @@ source("05_Visualization/Plotting_functions.R")
 source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 
 # Output path of figures
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_V2/"
 
 season <- "GS"
 
-# Determine which metric to process
+# Determine which syc metric to process
 arrayid <- 1
 # Name of target synchrony metrics
 res_varname <- c("daily_p_TE","daily_agg_TE","best_lag")[arrayid]
 # Title of these metrics
 res_title <- c("Peak TE (%)","Daily aggregated TE (%)","Lag (h)")[arrayid]
 
-my_color <- RColorBrewer::brewer.pal(5,"Set2")[c(1,2)]
 # This is the color pallet for paired comparisons
 pair_color <- RColorBrewer::brewer.pal(10,"Paired")[c(1,2,7,8,9,10)]
 
@@ -61,7 +61,11 @@ syc_df <- rbind(syc_df1,syc_df2,syc_df3,syc_df4,syc_df5,syc_df6) %>%
 # A list of source-sink pairs to plot
 sc_pairs <- data.frame(source = c("psi","VPD","TA"),
                        sink = c("ET","ET","ET"))
+# Initialize a list to store maps
 g_map_ls <- list()
+# Initialize a df to store synchrony subset
+syc_df_tmp <- c()
+
 for(i in 1:nrow(sc_pairs)){
   source_name <- sc_pairs$source[i]
   sink_name <- sc_pairs$sink[i]
@@ -69,19 +73,63 @@ for(i in 1:nrow(sc_pairs)){
   syc_df_sub <- syc_df %>%
     filter(source_sink == paste0(source_name,"_",sink_name)) %>%
     filter(!is.na(.data[[res_name]]))
+  syc_df_tmp <- rbind(syc_df_tmp,syc_df_sub)
   # Make map
   # Continuous color palette
   map_color <- wes_palette("Zissou1",100,type="continuous")
   g_map <- syc_map(syc_df_sub,res_name,colors = map_color,
-                   legend_title = "test",g_title = "",color_limits = c(0,15),end_marks = "right")
+                   legend_title = res_title,g_title = "",color_limits = c(0,15),end_marks = "right")
   g_map_ls[[i]] <- g_map
 }
-# Combine maps
-g_map_all <- plot_grid(plotlist = g_map_ls,nrow=2,labels="auto")
+# Combine 3 maps
+g_map <- plot_grid(plotlist = g_map_ls,nrow=2,align="hv",labels="auto")
+print_g(g_map,paste0("Syc_maps_",res_name),12,6)
 
+# Compare synchrony metrics across pairs (for ET as endpoint) ==========
+# Wilcoxon tests
+my_comparisons <- list(
+  c("psi_ET", "VPD_ET"),
+  c("psi_ET", "TA_ET"),
+  c("VPD_ET", "TA_ET")
+)
 
+# Process syc_df_tmp to make sure each site has three synchrony metrics
+syc_df_tmp_paired <- syc_df_tmp %>%
+  select(site_ID,source_sink,value = .data[[res_name]]) %>%
+  # Convert to long data to force matching
+  pivot_wider(names_from = source_sink, values_from = value) %>%
+  select(site_ID, psi_ET, VPD_ET, TA_ET) %>%
+  na.omit() %>%
+  # Convert back to long data
+  pivot_longer(cols = c(psi_ET,VPD_ET,TA_ET),
+               names_to = "source_sink",
+               values_to = "value") %>%
+  mutate(source_sink = factor(source_sink, levels = c("psi_ET","VPD_ET","TA_ET")))
 
-# Synchrony metrics vs AI
+g_box_pair <- ggplot(data = syc_df_tmp_paired,aes(x=source_sink,y=value,fill=source_sink))+
+  geom_boxplot(outlier.color = "grey")+
+  my_theme+
+  labs(y = res_title,x="")+
+  scale_fill_manual(values = pair_color[c(1,3,5)])+
+  scale_x_discrete(labels = c(
+    psi_ET = expression(psi %->% ET),
+    VPD_ET = expression(VPD %->% ET),
+    TA_ET  = expression(T[air] %->% ET)
+  ))+
+  stat_compare_means(
+    comparisons = my_comparisons,
+    method = "wilcox.test",
+    paired = FALSE,
+    label = "p.format",
+    tip.length = 0.01,
+    size=3
+  )+
+  # Set the top of the figure to make some room
+  scale_y_continuous(expand = expansion(mult = c(0.05,0.15)))
+
+print_g(g_box_pair,paste0("Syc_box_",res_name),4,3)
+
+# Synchrony metrics vs AI ==================
 
 # Synchrony metrics across climate
 
@@ -104,7 +152,7 @@ g_box <- ggplot(data = syc_df,aes(x=source_sink,y=.data[[res_name]],fill=source_
     ET_TA  = expression(ET %->% T[air])
   ))+
   theme(axis.text.x = element_text(angle=45,hjust=1,vjust=1))
-print_g(g_box,paste0("Source-sink_pair-comparisons_V2/Box_",res_name),6,6)
+print_g(g_box,paste0("Box_",res_name),6,6)
 
 
 if(FALSE){
