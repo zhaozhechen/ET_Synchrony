@@ -989,7 +989,8 @@ scatter_vars <- function(df,varname1,varname2,group_name,xtitle,ytitle,my_color)
   # Get parameters
   k <- lm$coefficients[2]
   b <- lm$coefficients[1]
-  p <- signif(summary(lm)$coefficients[2,4],2)
+  #p <- signif(summary(lm)$coefficients[2,4],2)
+  p <- formatC(summary(lm)$coefficients[2,4], format = "e", digits = 2)
   R2 <- round(summary(lm)$r.squared,3)
   
   g <- ggplot(data=df,aes(x=.data[[varname1]],y=.data[[varname2]],color=.data[[group_name]]))+
@@ -1509,4 +1510,13 @@ plot_CM <- function(CM,my_label){
   return(g_CM)
 }
 
+# This function is to make box plots
+plot_box <- function(df,varname1,varname2,fill_color,x_title,y_title){
+  g <-   ggplot(data=df,aes(x=.data[[varname1]],y=.data[[varname2]]))+
+    geom_boxplot(fill=fill_color,outlier.color = "grey")+
+    my_theme+
+    labs(x=x_title,y=y_title)
+
+  return(g)
+}
 

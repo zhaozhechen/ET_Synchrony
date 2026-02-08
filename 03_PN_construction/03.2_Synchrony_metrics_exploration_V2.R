@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Update Date: 2026.2.6
+# Update Date: 2026.2.7
 
 # This code is to explore synchrony strength among pairs
 
@@ -7,6 +7,7 @@
 library(dplyr)
 library(tidyr)
 library(ggpubr)
+library(FSA) # For Dunn test
 
 # Input path for Synchrony metrics for 12 pairs
 Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
@@ -65,7 +66,11 @@ sc_pairs <- data.frame(source = c("psi","VPD","TA"),
 g_map_ls <- list()
 # Initialize a df to store synchrony subset
 syc_df_tmp <- c()
+# Initiliaze a list to store scatter and box plots
+g_scatter_box_ls <- list()
 
+# Colors for scatter and box plots
+syc_colors <- RColorBrewer::brewer.pal(10,"Paired")[c(1,7,9)]
 for(i in 1:nrow(sc_pairs)){
   source_name <- sc_pairs$source[i]
   sink_name <- sc_pairs$sink[i]
@@ -73,7 +78,52 @@ for(i in 1:nrow(sc_pairs)){
   syc_df_sub <- syc_df %>%
     filter(source_sink == paste0(source_name,"_",sink_name)) %>%
     filter(!is.na(.data[[res_name]]))
+  
+  # Store this df for later pairwise tests
   syc_df_tmp <- rbind(syc_df_tmp,syc_df_sub)
+  
+  # Make a scatter plot of target synchrony metric vs AI ---------
+  g_scatter <- scatter_vars(syc_df_sub,"AI_gridded",res_name,"source_sink","Aridity Index",res_title,syc_colors[i])+
+    theme(legend.position = "none")
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_scatter
+
+  
+  # Make a box plot of target synchrony metric across climate ----------
+  g_box_climate <- plot_box(syc_df_sub,res_name,"Koppen_clim_class",fill_color = syc_colors[i],res_title,"")
+  # Statistical test, compare target synchrony metric across climate group
+  k_result <- kruskal.test(
+    syc_df_sub[[res_name]] ~ syc_df_sub$Koppen_clim_class
+  )
+  # Get p-value
+  p_txt <- paste0("p = ",formatC(k_result$p.value, format = "e", digits = 2))
+  # Add p-value to the plot
+  g_box_climate <- g_box_climate +
+    annotate("text",label = p_txt,x=Inf,y=-Inf,hjust=1.1,vjust=-0.8,size=5)
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_climate  
+  
+  # Dunn test
+  dunn_result <- dunnTest(x=syc_df_sub[[res_name]],
+           g = syc_df_sub$Koppen_clim_class,
+           method = "bh")$res
+  
+  # Make a box plot of target synchrony metric across IGBP ---------
+  g_box_IGBP <- plot_box(syc_df_sub,res_name,"IGBP_veg",fill_color = syc_colors[i],res_title,"")
+  # Statistical test, compare target synchrony metric across climate group
+  k_result <- kruskal.test(
+    syc_df_sub[[res_name]] ~ syc_df_sub$IGBP_veg
+  )
+  # Get p-value
+  p_txt <- paste0("p = ",formatC(k_result$p.value, format = "e", digits = 2))
+  # Add p-value to the plot
+  g_box_IGBP <- g_box_IGBP +
+    annotate("text",label = p_txt,x=Inf,y=-Inf,hjust=1.1,vjust=-0.8,size=5)
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_IGBP
+  
+  # Dunn test
+  dunn_result <- dunnTest(x=syc_df_sub[[res_name]],
+                          g = syc_df_sub$IGBP_veg,
+                          method = "bh")$res
+  
   # Make map
   # Continuous color palette
   map_color <- wes_palette("Zissou1",100,type="continuous")
@@ -81,9 +131,13 @@ for(i in 1:nrow(sc_pairs)){
                    legend_title = res_title,g_title = "",color_limits = c(0,15),end_marks = "right")
   g_map_ls[[i]] <- g_map
 }
-# Combine 3 maps
+# Combine 3 maps for three pairs
 g_map <- plot_grid(plotlist = g_map_ls,nrow=2,align="hv",labels="auto")
 print_g(g_map,paste0("Syc_maps_",res_name),12,6)
+
+# Combine all scatter and box plots
+g_scatter_box <- plot_grid(plotlist = g_scatter_box_ls,ncol=3,align="hv",labels="auto")
+print_g(g_scatter_box,paste0("Syc_compare_",res_name),12,9)
 
 # Compare synchrony metrics across pairs (for ET as endpoint) ==========
 # Wilcoxon tests
