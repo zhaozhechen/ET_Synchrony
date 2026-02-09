@@ -118,6 +118,23 @@ for(i in 1:nrow(source_sink_pair)){
                    legend_title="Delta",
                    color_limits=c(-2.5,2.5))  
   g_ls[[i]] <- g_map
+  
+  # Make categorical map of Delta values ---------------
+  # Calculate quantiles to divide categories
+  q25 <- quantile(syc_df$Delta,probs = 0.25)
+  q75 <- quantile(syc_df$Delta,probs = 0.75)
+  syc_df_categorical <- syc_df %>%
+    mutate(Type = case_when(
+      Delta >= q75 ~ "Driver-dominant",
+      Delta <= q25 ~ "ET-dominant",
+      TRUE ~ "Near-symmetric"))
+  g_map_categorical <- ggplot()+
+    geom_sf(data = CONUS, fill = "grey", color = "black", alpha = 0.3) +
+    geom_point(data = syc_df_categorical,aes(x=longitude.x,y=latitude.x,fill=Type),
+               size=5,alpha=0.8,shape=21,color="black")+
+    map_theme+
+    scale_fill_manual(values = syc_colors)+
+    labs(fill="")
 
 }
 
