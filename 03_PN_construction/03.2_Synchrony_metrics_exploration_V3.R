@@ -49,6 +49,11 @@ source_sink_pair <- data.frame(source = c("psi","VPD","TA"),
 g_ls <- list()
 # Initialize a df to store Delta values
 Delta_df <- c()
+# Initialize a list to store scatter and box plots
+g_scatter_box_ls <- list()
+
+# Colors for scatter and box plots
+syc_colors <- RColorBrewer::brewer.pal(10,"Paired")[c(1,7,9)]
 for(i in 1:nrow(source_sink_pair)){
   source_name <- source_sink_pair$source[i]
   sink_name <- source_sink_pair$sink[i]
@@ -70,21 +75,50 @@ for(i in 1:nrow(source_sink_pair)){
     # Remove NA
     na.omit()
   
-  # Get legend title
-  #legend_expr <- bquote(
-  #  TE(.(as.name(source_name)) %->% .(as.name(sink_name))) -
-  #    TE(.(as.name(sink_name)) %->% .(as.name(source_name)))
-  #)
+  # Store Delta synchrony metrics to get distribution
+  Delta_df <- rbind(Delta_df,syc_df)
   
-  # Make map of Delta value
+  # Make a scatter plot of Delta vs AI ----------------
+  g_scatter <- scatter_vars(syc_df,"AI_gridded","Delta","source_sink","Aridity Index",
+                            "Directional difference in TE(%)",syc_colors[i])+
+    theme(legend.position = "none")
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_scatter
+  
+  # Make a box plot of Delta across climate -----------
+  g_box_climate <- plot_box(syc_df,"Delta","Koppen_clim_class",fill_color=syc_colors[i],
+                            "Directional difference in TE(%)","")
+  # Statistical test, compare target synchrony metric across climate group
+  k_result <- kruskal.test(
+    syc_df$Delta ~ syc_df$Koppen_clim_class
+  )
+  # Get p-value
+  p_txt <- paste0("p = ",formatC(k_result$p.value, format = "e", digits = 2))
+  # Add p-value to the plot
+  g_box_climate <- g_box_climate +
+    annotate("text",label = p_txt,x=Inf,y=-Inf,hjust=1.1,vjust=-0.8,size=5)
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_climate  
+  
+  # Make a box plot of Delta across IGBP ---------
+  g_box_IGBP <- plot_box(syc_df,"Delta","IGBP_veg",fill_color = syc_colors[i],
+                         "Directional difference in TE(%)","")
+  # Statistical test, compare target synchrony metric across climate group
+  k_result <- kruskal.test(
+    syc_df$Delta ~ syc_df$IGBP_veg
+  )
+  # Get p-value
+  p_txt <- paste0("p = ",formatC(k_result$p.value, format = "e", digits = 2))
+  # Add p-value to the plot
+  g_box_IGBP <- g_box_IGBP +
+    annotate("text",label = p_txt,x=Inf,y=-Inf,hjust=1.1,vjust=-0.8,size=5)
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_IGBP
+  
+  # Make map of Delta value -----------------
   g_map <- syc_map(syc_df,"Delta",palette_name = "PiYG",
                    g_title="",
                    legend_title="Delta",
                    color_limits=c(-2.5,2.5))  
   g_ls[[i]] <- g_map
-  
-  # Store Delta synchrony metrics to get distribution
-  Delta_df <- rbind(Delta_df,syc_df)
+
 }
 
 # Combine maps
@@ -94,6 +128,10 @@ g_map_all <- plot_grid(plotlist = g_ls,
 # Output this figure
 print_g(g_map_all,paste0("Delta_maps_",res_name),
         12,6)
+
+# Combine all scatter and box plots
+g_scatter_box <- plot_grid(plotlist = g_scatter_box_ls,ncol=3,align="hv",labels="auto")
+print_g(g_scatter_box,paste0("Delta_compare_",res_name),12,9)
 
 # Compare synchrony metrics across pairs =============
 # Wilcoxon tests
