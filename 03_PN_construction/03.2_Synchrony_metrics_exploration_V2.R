@@ -230,7 +230,10 @@ g_lag_TE <- ggplot(data=syc_df,aes(x = GS_best_lag,y=forcats::fct_rev(source_sin
 print_g(g_lag_TE,paste0("Lag_TE_plot"),8,4)
 
 
-
+syc_df %>%
+  group_by(source_sink) %>%
+  summarize(mean = mean(GS_best_lag,na.rm=TRUE),
+            median = median(GS_best_lag,na.rm=TRUE))
 
 
 
