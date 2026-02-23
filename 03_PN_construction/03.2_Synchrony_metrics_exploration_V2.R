@@ -9,6 +9,7 @@ library(tidyr)
 library(ggpubr)
 library(FSA) # For Dunn test
 library(forcats)
+library(rstatix)
 
 # Input path for Synchrony metrics for 12 pairs
 Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
@@ -156,10 +157,10 @@ my_comparisons <- list(
 
 # Process syc_df_tmp to make sure each site has three synchrony metrics
 syc_df_tmp_paired <- syc_df_tmp %>%
-  select(site_ID,source_sink,value = .data[[res_name]]) %>%
+  select(site_ID,source_sink,Regime,value = .data[[res_name]]) %>%
   # Convert to long data to force matching
   pivot_wider(names_from = source_sink, values_from = value) %>%
-  select(site_ID, psi_ET, VPD_ET, TA_ET) %>%
+  #select(site_ID, psi_ET, VPD_ET, TA_ET) %>%
   na.omit() %>%
   # Convert back to long data
   pivot_longer(cols = c(psi_ET,VPD_ET,TA_ET),
@@ -167,6 +168,7 @@ syc_df_tmp_paired <- syc_df_tmp %>%
                values_to = "value") %>%
   mutate(source_sink = factor(source_sink, levels = c("psi_ET","VPD_ET","TA_ET")))
 
+# Compare synchrony metrics (ET as endpoint) across different pairs
 g_box_pair <- ggplot(data = syc_df_tmp_paired,aes(x=source_sink,y=value,fill=source_sink))+
   geom_boxplot(outlier.color = "grey")+
   my_theme+
@@ -188,7 +190,34 @@ g_box_pair <- ggplot(data = syc_df_tmp_paired,aes(x=source_sink,y=value,fill=sou
   # Set the top of the figure to make some room
   scale_y_continuous(expand = expansion(mult = c(0.05,0.15)))
 
-print_g(g_box_pair,paste0("Syc_box_",res_name),4,3)
+# Compare synchrony metrics (ET as endpoint) energy vs water-limited across different pairs
+# Calculate p-value per facet
+p_df <- syc_df_tmp_paired %>%
+  filter(is.finite(value), !is.na(Regime), !is.na(source_sink)) %>%
+  group_by(source_sink) %>%
+  wilcox_test(value ~ Regime) %>%
+  mutate(
+    p.format = scales::pvalue(p, accuracy = 0.001),
+    group1 = "Water-limited",
+    group2 = "Energy-limited"
+  ) %>%
+  add_xy_position(x = "Regime")          # gives xmin/xmax and default y.position
+
+g_box_WvsE <- ggplot(data = syc_df_tmp_paired,aes(x=Regime,y=value,fill=source_sink))+
+  geom_boxplot(outlier.color = "grey")+
+  my_theme+
+  labs(y = res_title,x="")+
+  scale_fill_manual(values = pair_color[c(1,3,5)])+
+  facet_wrap(~source_sink)+
+  stat_pvalue_manual(p_df,label = "p.format",
+                     tip.length = 0.01,size=3)+
+  # Set the top of the figure to make some room
+  scale_y_continuous(expand = expansion(mult = c(0.05,0.15)))
+
+# Combine the two boxplots
+g_box <- plot_grid(g_box_pair,g_box_WvsE,align="hv")
+
+print_g(g_box,paste0("Syc_box_",res_name),8,3)
 
 # Distributions of synchrony metrics across pairs ================================
 # Box plots of synchrony metrics across different pairs 
