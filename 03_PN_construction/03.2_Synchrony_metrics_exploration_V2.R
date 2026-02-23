@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Update Date: 2026.2.10
+# Update Date: 2026.2.23
 
 # This code is to explore synchrony strength among pairs
 
@@ -27,12 +27,12 @@ source("05_Visualization/Plotting_functions.R")
 source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 
 # Output path of figures
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_V2/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_V3/"
 
 season <- "GS"
 
 # Determine which syc metric to process
-arrayid <- 3
+arrayid <- 1
 # Name of target synchrony metrics
 res_varname <- c("daily_p_TE","daily_agg_TE","best_lag")[arrayid]
 # Title of these metrics
@@ -57,7 +57,12 @@ syc_df6 <- read_syc_df("ET","TA",Syc_metrics_path)
 syc_df <- rbind(syc_df1,syc_df2,syc_df3,syc_df4,syc_df5,syc_df6) %>%
   merge(predictor_df %>%
           rename(site_ID = site_id),by="site_ID") %>%
-  mutate(source_sink = factor(source_sink,levels = c("psi_ET","ET_psi","VPD_ET","ET_VPD","TA_ET","ET_TA")))
+  mutate(source_sink = factor(source_sink,levels = c("psi_ET","ET_psi","VPD_ET","ET_VPD","TA_ET","ET_TA"))) %>%
+  # Regime, based on Dryness Index = PET/P = 1/AI
+  # PET/P < 1 (AI>1): Energy-limited
+  # PET/P > 1 (AI<1): Water-limited
+  mutate(Regime = case_when(AI_gridded < 1 ~ "Water-limited",
+                            AI_gridded >= 1 ~ "Energy-limited"))
 
 # Maps of synchrony metrics across pairs ==============================
 # A list of source-sink pairs to plot
@@ -88,7 +93,6 @@ for(i in 1:nrow(sc_pairs)){
     theme(legend.position = "none")
   g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_scatter
 
-  
   # Make a box plot of target synchrony metric across climate ----------
   g_box_climate <- plot_box(syc_df_sub,res_name,"Koppen_clim_class",fill_color = syc_colors[i],res_title,"")
   # Statistical test, compare target synchrony metric across climate group
@@ -128,8 +132,10 @@ for(i in 1:nrow(sc_pairs)){
   # Make map
   # Continuous color palette
   map_color <- wes_palette("Zissou1",100,type="continuous")
-  g_map <- syc_map(syc_df_sub,res_name,colors = map_color,
-                   legend_title = res_title,g_title = "",color_limits = c(0,24),end_marks = NA)
+  # Color limit: Use 0,10 for daily peak TE; Use 0.24 for lag
+  # end_marks: use "right" for daily peak TE; Use "none" for lag
+  g_map <- syc_map(syc_df_sub,res_name,colors = map_color,shape_var = "Regime",
+                   legend_title = res_title,g_title = "",color_limits = c(0,10),end_marks = "right")
   g_map_ls[[i]] <- g_map
 }
 # Combine 3 maps for three pairs

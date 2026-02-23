@@ -684,6 +684,7 @@ TE_norm_lag_plot <- function(TE_df_tmp,p_lag,p_TE,mem,m_color){
 # g_title: Title
 # color_limits: need an input for the global range for three seasons, so maps of different
 # seasons share the same color bar
+# shape_var determines whether the points should be plotted using shape group
 syc_map <- function(df, varname,
                     palette_name = NULL,
                     colors = NULL,
@@ -694,7 +695,8 @@ syc_map <- function(df, varname,
                     n_breaks = 5,
                     end_marks = c("left", "right"),   # choose: "left", "right", or both, or character(0)
                     left_mark = "\u2264",             # "≤"
-                    right_mark = "\u2265"             # "≥"
+                    right_mark = "\u2265",             # "≥"
+                    shape_var = NULL
 ) {
   
   # ---- checks ----
@@ -711,15 +713,31 @@ syc_map <- function(df, varname,
   
   # ---- base plot ----
   g <- ggplot() +
-    geom_sf(data = CONUS, fill = "grey", color = "black", alpha = 0.3) +
-    geom_point(
-      data = df,
-      aes(x = longitude.x, y = latitude.x, fill = .data[[varname]]),
-      size = 5, alpha = 0.8, shape = 21, color = "black"
-    ) +
-    labs(fill = legend_title) +
-    ggtitle(g_title) +
-    map_theme
+    geom_sf(data = CONUS, fill = "grey", color = "black", alpha = 0.3) 
+  
+  # Add points -----
+  if(!is.null(shape_var)){
+    g <- g +
+      geom_point(
+        data = df,
+        aes(x = longitude.x, y = latitude.x, fill = .data[[varname]],shape = .data[[shape_var]]),
+        size = 3.5, alpha = 0.8, color = "black"
+      ) +
+      scale_shape_manual(values = c(21,23))+
+      labs(fill = legend_title) +
+      ggtitle(g_title) +
+      map_theme  
+  }else{
+    g <- g +
+      geom_point(
+        data = df,
+        aes(x = longitude.x, y = latitude.x, fill = .data[[varname]]),
+        size = 3.5, alpha = 0.8, shape = 21, color = "black"
+      ) +
+      labs(fill = legend_title) +
+      ggtitle(g_title) +
+      map_theme
+  }
   
   # ---- label function ----
   label_fun <- function(x) {
@@ -1001,14 +1019,14 @@ scatter_vars <- function(df,varname1,varname2,group_name,xtitle,ytitle,my_color)
     annotate(
       geom = "text",
       x=Inf,y=-Inf,
-      label = bquote(italic(p) == .(p)),
-      hjust=1.2,vjust=-2,
+      label = as.expression(bquote(italic(p) == .(p))),
+      hjust=1.2,vjust=-9,
       size=5)+
     annotate(
       geom = "text",
       x=Inf,y=-Inf,
-      label = bquote(R^2 == .(R2)),
-      hjust=1.2,vjust=-4,
+      label = as.expression(bquote(R^2 == .(R2))),
+      hjust=1.2,vjust=-10,
       size=5)+
     theme(legend.position = c(0.15,0.85),
           legend.title = element_blank(),
