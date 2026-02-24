@@ -63,7 +63,29 @@ syc_df <- rbind(syc_df1,syc_df2,syc_df3,syc_df4,syc_df5,syc_df6) %>%
   # PET/P < 1 (AI>1): Energy-limited
   # PET/P > 1 (AI<1): Water-limited
   mutate(Regime = case_when(AI_gridded < 1 ~ "Water-limited",
-                            AI_gridded >= 1 ~ "Energy-limited"))
+                            AI_gridded >= 1 ~ "Energy-limited")) %>%
+  # Aggregate some Koppen climate classes, due to small sample size
+  mutate(Koppen_aggregate = case_when(Koppen_clim_class == "Bsh"|Koppen_clim_class == "Bsk"|
+                                        Koppen_clim_class == "Bwh"|Koppen_clim_class == "Bwk" ~ "Dry",
+                                      Koppen_clim_class == "Cfa"|Koppen_clim_class == "Cwa"~"Humid_subtropical",
+                                      Koppen_clim_class == "Csa"|Koppen_clim_class == "Csb"~ "Mediterranean",
+                                      Koppen_clim_class == "Dfa"|Koppen_clim_class == "Dsa"|
+                                        Koppen_clim_class == "Dfb"|Koppen_clim_class == "Dsb"~"Humid_continental",
+                                      Koppen_clim_class == "Dfc"~"Subarctic")) %>%
+  mutate(Koppen_aggregate = factor(Koppen_aggregate,levels = c("Dry","Mediterranean","Humid_subtropical",
+                                                               "Humid_continental","Subarctic"))) %>%
+  mutate(Koppen_clim_class = case_when(Koppen_clim_class == "Bsh"~"BSh",
+                                       Koppen_clim_class == "Bsk"~"BSk",
+                                       Koppen_clim_class == "Bwh"~"BWh",
+                                       Koppen_clim_class == "Bwk"~"BWk",
+                                       TRUE ~ Koppen_clim_class))%>%
+  mutate(
+    # Add empty levels for plotting
+    Koppen_clim_class = factor(Koppen_clim_class,levels = c("BSh","BSk","BWh","BWk","",
+                                                            "Csa","Csb"," ",
+                                                            "Cfa","Cwa","  ",
+                                                            "Dfa","Dsa","Dfb","Dsb","   ",
+                                                            "Dfc")))
 
 # Maps of synchrony metrics across pairs ==============================
 # A list of source-sink pairs to plot
@@ -95,7 +117,12 @@ for(i in 1:nrow(sc_pairs)){
   g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_scatter
 
   # Make a box plot of target synchrony metric across climate ----------
-  g_box_climate <- plot_box(syc_df_sub,res_name,"Koppen_clim_class",fill_color = syc_colors[i],res_title,"")
+  # Aggregate climate classes
+  g_box_climate_agg <- plot_box_groups(syc_df_sub,res_name,"Koppen_aggregate",fill_color = syc_colors[i],
+                                       x_title = res_title,y_title = "",h_just = -4)
+  # Koppen climate without aggregation
+  g_box_climate <- plot_box_groups(syc_df_sub,res_name,"Koppen_clim_class",fill_color = syc_colors[i],
+                                   x_title = res_title,y_title = "",h_just = -4)
   # Statistical test, compare target synchrony metric across climate group
   k_result <- kruskal.test(
     syc_df_sub[[res_name]] ~ syc_df_sub$Koppen_clim_class
@@ -105,12 +132,15 @@ for(i in 1:nrow(sc_pairs)){
   # Add p-value to the plot
   g_box_climate <- g_box_climate +
     annotate("text",label = p_txt,x=Inf,y=-Inf,hjust=1.1,vjust=-0.8,size=5)
+  
+  
+  
+  
   g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_climate  
   
-  # Dunn test
-  dunn_result <- dunnTest(x=syc_df_sub[[res_name]],
-           g = syc_df_sub$Koppen_clim_class,
-           method = "bh")$res
+  
+  
+  
   
   # Make a box plot of target synchrony metric across IGBP ---------
   g_box_IGBP <- plot_box(syc_df_sub,res_name,"IGBP_veg",fill_color = syc_colors[i],res_title,"")
