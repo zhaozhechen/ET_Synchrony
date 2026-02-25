@@ -1547,26 +1547,44 @@ plot_box <- function(df,varname1,varname2,fill_color,x_title,y_title){
 # h_just: a negative value for the position of sample size on the right of the panel
 # show_letters: logic. TRUE or FALSE: whether letter comparisons should be shown
 # letter_offset_frac: letter position
+# box_violin decides whether box plot or violin plot should be plotted
 plot_box_groups <- function(df,varname1,varname2,fill_color,x_title,y_title,
                             show_n = TRUE,h_just=-4,
-                            show_letters = TRUE,letter_offset_frac=0.03){
+                            show_letters = TRUE,letter_offset_frac=0.03,box_violin="Violin"){
   # Keep only complete cases for 
   df <- df[,c(varname1,varname2)]
   df <- df[complete.cases(df),,drop=FALSE]
   # Make sure group is a factor
-  #df[[varname2]] <- factor(df[[varname2]])
+  df[[varname2]] <- factor(df[[varname2]])
   
-  # Base plot
-  g <- ggplot(data=df,aes(x=.data[[varname1]],y=.data[[varname2]]))+
-    geom_boxplot(fill=fill_color,outlier.colour = "grey")+
-    my_theme+
-    labs(x=x_title,y=y_title)+
-    # This ensures adding text outside the border
-    coord_cartesian(clip = "off")+
-    # Make room for texts on the right
-    theme(plot.margin = margin(r=80))+
-    scale_y_discrete(drop=FALSE)
-  
+  # Make base plot
+  if(box_violin == "Box"){
+    g <- ggplot(data=df,aes(x=.data[[varname1]],y=.data[[varname2]]))+
+      geom_boxplot(fill=fill_color,outlier.colour = "grey")+
+      my_theme+
+      labs(x=x_title,y=y_title)+
+      # This ensures adding text outside the border
+      coord_cartesian(clip = "off")+
+      # Make room for texts on the right
+      theme(plot.margin = margin(r=80))+
+      scale_y_discrete(drop=FALSE)   
+  }else{
+    g <- ggplot(data=df,aes(x=.data[[varname2]],y=.data[[varname1]]))+
+      geom_half_violin(fill=fill_color,alpha=0.5,color=NA,side = "r")+
+      geom_boxplot(width=0.1,color="black",outlier.color = NA)+
+      geom_jitter(aes(x = as.numeric(.data[[varname2]])-0.2),
+                  position = position_jitter(width=0.1),
+                  alpha=0.7,
+                  color=fill_color)+
+      # Flip the coordinate and ensure adding text outside the border
+      coord_flip(clip="off")+
+      my_theme+
+      labs(y=x_title,x=y_title)+
+      # Make room for texts on the right
+      theme(plot.margin = margin(r=80))+
+      scale_x_discrete(drop=FALSE)    
+  }
+
   # Sample size on the right side
   if(show_n){
     n_df <- df %>%
@@ -1574,56 +1592,96 @@ plot_box_groups <- function(df,varname1,varname2,fill_color,x_title,y_title,
       rename(group = !!varname2)
     
     # Add sample size to the plot, outside the border
-    g <- g +
-      geom_text(data=n_df,aes(x=Inf,y=group,label = n),
-                inherit.aes = FALSE,
-                hjust=h_just,
-                size=4)
+    if(box_violin == "Box"){
+      g <- g +
+        geom_text(data=n_df,aes(x=Inf,y=group,label = n),
+                  inherit.aes = FALSE,
+                  hjust=h_just,
+                  size=4)  
+    }else{
+      g <- g +
+        geom_text(data=n_df,aes(y=Inf,x=group,label = n),
+                  inherit.aes = FALSE,
+                  hjust=h_just,
+                  size=4)
+    }
   }
   
-  # Show significant letters
-  if(show_letters){
-    # Dunn test
-    dunn_res <- FSA::dunnTest(
-      x = df[[varname1]],
-      g = df[[varname2]],
-      method = "bh"
-    )$res
-    
-    # Split comparison column safely
-    pairs <- strsplit(dunn_res$Comparison, " - ")
-    
-    group1 <- sapply(pairs, `[`, 1)
-    group2 <- sapply(pairs, `[`, 2)
-    
-    # Build named p-value vector correctly
-    pvec <- dunn_res$P.adj
-    names(pvec) <- paste(group1, group2, sep = "-")
-    
-    # Generate compact letters
-    letters <- multcompView::multcompLetters(pvec)$Letters
-    
-    letter_df <- data.frame(
-      group = names(letters),
-      letters = letters,
-      stringsAsFactors = FALSE
-    )
-    
-    x_max_by_group <- df %>%
-      group_by(.data[[varname2]]) %>%
-      summarise(x_max = max(.data[[varname1]], na.rm = TRUE), .groups = "drop") %>%
-      rename(group = !!varname2)
-    
-    letter_df <- dplyr::left_join(letter_df, x_max_by_group, by = "group") %>%
-      dplyr::mutate(x = x_max + letter_offset_frac * x_span)
-    
-    # Add letters
-    g <- g +
-      geom_text(data=letter_df,
-                aes(x=x,y=group,label=letters),
-                inherit.aes = FALSE,
-                hjust=0,
-                size=4)
+  # Kruskal wallis test to compare synchrony metrics across groups
+  k_result <- kruskal.test(df[[varname1]]~df[[varname2]])
+  # Get p-value
+  p_txt <- paste0("p = ",formatC(k_result$p.value, format = "e", digits = 2))
+  # If not significant, add p-value to the plot
+  if(k_result$p.value > 0.05){
+    if(box_violin == "Box"){
+      g <- g +
+        annotate("text",label = p_txt,x=Inf,y=-Inf,hjust=1.1,vjust=-0.8,size=5)      
+    }else{
+      g <- g +
+        annotate("text",label = p_txt,y=Inf,x=-Inf,hjust=1.1,vjust=-0.8,size=5)  
+    }
+  
+  }else {
+    # If significant
+    # Show significant letters
+    if(show_letters){
+      # Dunn test
+      dunn_res <- FSA::dunnTest(
+        x = df[[varname1]],
+        g = df[[varname2]],
+        method = "bh"
+      )$res
+      
+      # Split comparison column safely
+      pairs <- strsplit(dunn_res$Comparison, " - ")
+      
+      group1 <- sapply(pairs, `[`, 1)
+      group2 <- sapply(pairs, `[`, 2)
+      
+      # Build named p-value vector correctly
+      pvec <- dunn_res$P.adj
+      names(pvec) <- paste(group1, group2, sep = "-")
+      
+      # Generate compact letters
+      letters <- multcompView::multcompLetters(pvec)$Letters
+      
+      letter_df <- data.frame(
+        group = names(letters),
+        letters = letters,
+        stringsAsFactors = FALSE
+      )
+      
+      # need x_span for letter placement
+      x_rng  <- range(df[[varname1]], na.rm = TRUE)
+      x_span <- diff(x_rng)
+      
+      x_max_by_group <- df %>%
+        group_by(.data[[varname2]]) %>%
+        summarise(x_max = max(.data[[varname1]], na.rm = TRUE), .groups = "drop") %>%
+        rename(group = !!varname2)
+      
+      letter_df <- dplyr::left_join(letter_df, x_max_by_group, by = "group") %>%
+        dplyr::mutate(x = x_max + letter_offset_frac * x_span)
+      
+      # Add letters
+      if(box_violin == "Box"){
+        g <- g +
+          geom_text(data=letter_df,
+                    aes(x=x,y=group,label=letters),
+                    inherit.aes = FALSE,
+                    hjust=0,
+                    size=4)        
+      }else{
+        g <- g +
+          geom_text(data=letter_df,
+                    aes(y=x,x=group,label=letters),
+                    inherit.aes = FALSE,
+                    vjust=0,
+                    size=4)
+      }
+
+    }  
   }
+  
   return(g)
 }
