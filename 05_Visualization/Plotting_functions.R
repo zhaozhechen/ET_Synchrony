@@ -773,9 +773,12 @@ syc_map <- function(df, varname,
 }
 
 
-
 # This is the same map function but for discrete values
 syc_map_disc <- function(df,varname,legend_title,g_title){
+  df <- df %>%
+    select(site_ID,latitude,longitude,all_of(varname)) %>%
+    na.omit()
+  
   g <- ggplot()+
     geom_sf(data=CONUS,fill="grey",color="black",alpha=0.3)+
     geom_point(data=df,aes(x=longitude,y=latitude,
