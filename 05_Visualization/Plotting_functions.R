@@ -10,6 +10,8 @@ library(stringr)
 library(sf)
 library(ggrepel)
 library(wesanderson)
+library(tidyterra)
+library(ggnewscale)
 
 # Make CONUS boundary
 # Whole US map
@@ -696,7 +698,16 @@ syc_map <- function(df, varname,
                     end_marks = c("left", "right"),   # choose: "left", "right", or both, or character(0)
                     left_mark = "\u2264",             # "≤"
                     right_mark = "\u2265",             # "≥"
-                    shape_var = NULL
+                    shape_var = NULL,
+                    shape_values = c(21,23),
+                    base_raster = NULL,
+                    base_name = "Aridity index",
+                    base_alpha=0.7,
+                    base_limits = c(0,2),
+                    base_colors = NULL,
+                    base_n_breaks = 5,
+                    base_palette_name = "RdYlBu",
+                    base_direction = 1
 ) {
   
   # ---- checks ----
@@ -712,8 +723,62 @@ syc_map <- function(df, varname,
   end_marks <- intersect(end_marks, c("left", "right"))
   
   # ---- base plot ----
-  g <- ggplot() +
-    geom_sf(data = CONUS, fill = "grey", color = "black", alpha = 0.3) 
+  g <- ggplot()+ annotate(
+    "rect",
+    xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf,
+    fill = "white", colour = NA
+  )
+  
+  # ---- NEW: local CONUS outer boundary in EPSG:4326 (does NOT change global CONUS) ----
+  CONUS_outer_4326 <- sf::st_union(CONUS) |>
+    sf::st_as_sf() |>
+    sf::st_transform(4326)
+  
+  conus_v_4326 <- terra::vect(CONUS_outer_4326)
+  
+  # ---- NEW: add AI raster background (cropped/masked in EPSG:4326) ----
+  if (!is.null(base_raster)) {
+    
+    # base_raster is already EPSG:4326 from your printout
+    base_crop <- terra::crop(base_raster, terra::ext(conus_v_4326))
+    base_conus <- terra::mask(base_crop, conus_v_4326)
+    
+    g <- g + tidyterra::geom_spatraster(data = base_conus, alpha = base_alpha)
+    
+    base_scale_args <- list(
+      name   = base_name,
+      limits = base_limits,
+      oob    = scales::squish
+    )
+    if (!is.null(base_limits) && length(base_limits) == 2) {
+      base_scale_args$breaks <- seq(base_limits[1], base_limits[2], length.out = base_n_breaks)
+    }
+    
+    # --- NEW: RdYlBu (blue = high) for AI ---
+    base_scale_args$guide <- guide_colorbar(
+      ticks = TRUE,
+      frame.colour = "black",
+      ticks.colour = "black"
+    )
+    
+    g <- g + do.call(
+      scale_fill_distiller,
+      c(list(
+        palette   = base_palette_name,
+        direction = base_direction,
+        na.value  = "white"
+      ), base_scale_args)
+    )
+    
+    g <- g + ggnewscale::new_scale_fill()
+
+  }
+  
+  # ---- draw CONUS outlines on top, but DON'T fill (so raster stays visible) ----
+  g <- g +
+    geom_sf(data = sf::st_transform(CONUS, 4326),
+            fill = NA, color = "black", alpha = 0.6) +
+    coord_sf(crs = sf::st_crs(4326), expand = FALSE)
   
   # Add points -----
   if(!is.null(shape_var)){
@@ -723,7 +788,7 @@ syc_map <- function(df, varname,
         aes(x = longitude.x, y = latitude.x, fill = .data[[varname]],shape = .data[[shape_var]]),
         size = 3.5, alpha = 0.8, color = "black"
       ) +
-      scale_shape_manual(values = c(21,23))+
+      scale_shape_manual(values = shape_values)+
       labs(fill = legend_title) +
       ggtitle(g_title) +
       map_theme  
@@ -768,6 +833,7 @@ syc_map <- function(df, varname,
   } else {
     g <- g + do.call(scale_fill_distiller, c(list(palette = palette_name, direction = direction), scale_args))
   }
+  
   
   return(g)
 }

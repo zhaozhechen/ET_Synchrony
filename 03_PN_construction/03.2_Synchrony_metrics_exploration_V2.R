@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Update Date: 2026.2.26
+# Update Date: 2026.2.27
 
 # This code is to explore synchrony strength among pairs
 
@@ -10,6 +10,7 @@ library(ggpubr)
 library(FSA) # For Dunn test
 library(forcats)
 library(rstatix)
+library(terra)
 
 # Input path for Synchrony metrics for 12 pairs
 Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
@@ -19,6 +20,9 @@ Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 
 # Predictor df, with updated AI_gridded
 predictor_df <- read.csv("00_Data/perdictor_df_updated.csv")
+
+# Aridity index map
+AI_raster <- rast("00_Data/2022_CONUS_AI.tif")
 
 # Source-sink pairs to test
 source_sink_pairs <- read.csv("00_Data/Source-sink_pairs.csv")
@@ -67,6 +71,12 @@ syc_df <- rbind(syc_df1,syc_df2,syc_df3,syc_df4,syc_df5,syc_df6) %>%
   # PET/P > 1 (AI<1): Water-limited
   mutate(Regime = case_when(AI_gridded < 1 ~ "Water-limited",
                             AI_gridded >= 1 ~ "Energy-limited")) %>%
+  # Aridity classes, based on Huang et al. 2016
+  mutate(AI_Class = case_when(AI_gridded <0.2 ~ "Arid",
+                                (AI_gridded >= 0.2 & AI_gridded < 0.5) ~ "Semiarid",
+                                (AI_gridded >= 0.5 & AI_gridded < 0.65) ~ "Semihumid",
+                                AI_gridded >= 0.65 ~ "Humid")) %>%
+  mutate(AI_Class = factor(AI_Class,levels=c("Arid","Semiarid","Semihumid","Humid")))%>%
   # Aggregate some Koppen climate classes, due to small sample size in some of the original classes
   mutate(
     Koppen_aggregate = case_when(
@@ -166,7 +176,7 @@ for(i in 1:nrow(sc_pairs)){
 
   # Make a box plot of target syn
   
-Add soil!!!  
+#Add soil!!!  
   
 
   
@@ -176,18 +186,22 @@ Add soil!!!
 
   
   # Make map  ----------------------------
-  # Continuous color palette
-  map_color <- wes_palette("Zissou1",100,type="continuous")
+  # Continuous color palette for synchrony values
+  map_color <- RColorBrewer::brewer.pal(n=11,name = "YlGn")
   # Color limit: Use 0,10 for daily peak TE; Use 0.24 for lag
   # end_marks: use "right" for daily peak TE; Use "none" for lag
-  g_map <- syc_map(syc_df_sub,res_name,colors = map_color,shape_var = "Regime",
-                   legend_title = res_title,g_title = "",color_limits = c(0,10),end_marks = "right")
+  g_map <- syc_map(syc_df_sub,res_name,colors = map_color,
+                   legend_title = res_title,g_title = "",
+                   color_limits = c(0,10),end_marks = "right",base_raster = AI_raster)+
+    theme(legend.position = "bottom")
+  
+  
   g_map_ls[[i]] <- g_map
 }
 
 # Combine 3 maps for three pairs
 g_map <- plot_grid(plotlist = g_map_ls,nrow=2,align="hv",labels="auto")
-print_g(g_map,paste0("Syc_maps_",res_name),12,6)
+print_g(g_map,paste0("Syc_maps_AI_",res_name),12,6)
 
 # Combine all scatter and box plots
 g_scatter_box <- plot_grid(plotlist = g_scatter_box_ls,ncol=3,align="hv",labels="auto")
@@ -259,6 +273,10 @@ g_box_WvsE <- ggplot(data = syc_df_tmp_paired,aes(x=Regime,y=value,fill=source_s
                      tip.length = 0.01,size=3)+
   # Set the top of the figure to make some room
   scale_y_continuous(expand = expansion(mult = c(0.05,0.15)))
+
+# Check outliers:
+test <- syc_df_tmp_paired %>%
+  arrange(source_sink,Regime,desc(value))
 
 # Combine the two boxplots
 g_box <- plot_grid(g_box_pair,g_box_WvsE,align="hv")
