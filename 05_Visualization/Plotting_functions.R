@@ -1624,7 +1624,17 @@ plot_box_groups <- function(df,varname1,varname2,fill_color,x_title,y_title,
   df <- df[,c(varname1,varname2)]
   df <- df[complete.cases(df),,drop=FALSE]
   # Make sure group is a factor
-  df[[varname2]] <- factor(df[[varname2]])
+  #df[[varname2]] <- factor(df[[varname2]])
+  # Save factor levels BEFORE subsetting (if varname2 is already a factor)
+  lev2 <- if (is.factor(df[[varname2]])) levels(df[[varname2]]) else NULL
+  
+  # Preserve levels (so blank levels remain)
+  if (!is.null(lev2)) {
+    df[[varname2]] <- factor(df[[varname2]], levels = lev2)
+  } else {
+    df[[varname2]] <- factor(df[[varname2]])
+  }
+  
   
   # Make base plot
   if(box_violin == "Box"){

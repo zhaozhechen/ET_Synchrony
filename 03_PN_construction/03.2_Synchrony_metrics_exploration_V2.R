@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Update Date: 2026.2.27
+# Update Date: 2026.2.28
 
 # This code is to explore synchrony strength among pairs
 
@@ -115,7 +115,24 @@ syc_df <- rbind(syc_df1,syc_df2,syc_df3,syc_df4,syc_df5,syc_df6) %>%
   mutate(IGBP_veg = factor(IGBP_veg,levels = c("ENF","DBF","MF","",
                                                "CSH","OSH","  ",
                                                "WSA","SAV","GRA","   ",
-                                               "CRO","CVM")))
+                                               "CRO","CVM"))) %>%
+  left_join(Site_info %>%
+              select(site_ID = site_id,Soil_Type = Description),by="site_ID") %>%
+  mutate(Soil_Type = factor(Soil_Type,levels=rev(c("Sand","Loamy sand",
+                                                   "    ","Sandy loam",
+                                               "   ","Loam","Silt loam",
+                                               "  ","Clay loam","Silty clay loam",
+                                               " ","Silty clay","Clay")))) %>%
+  # Ref: USDA The Soil Survey Manual 2017 p123-126
+   mutate(Soil_Group = case_when(
+    Soil_Type %in% c("Clay","Silty clay") ~ "Fine",
+    Soil_Type %in% c("Silty clay loam","Clay loam") ~ "Moderately fine",
+    Soil_Type %in% c("Loam","Silt loam") ~ "Medium",
+    Soil_Type %in% c("Sandy loam") ~ "Moderately coarse",
+    Soil_Type %in% c("Loamy sand","Sand") ~ "Coarse",
+    TRUE ~ NA_character_
+  ),
+  Soil_Group = factor(Soil_Group,levels=c("Fine","Moderately fine","Medium","Moderately coarse","Coarse")))
 
 # Maps of synchrony metrics across pairs ==============================
 # A list of source-sink pairs to plot
@@ -127,6 +144,8 @@ g_map_ls <- list()
 syc_df_tmp <- c()
 # Initialize a list to store scatter and box plots
 g_scatter_box_ls <- list()
+# Initialize a list to store scatter plots and box plots for SI
+g_scatter_box_SI_ls <- list()
 
 for(i in 1:nrow(sc_pairs)){
   source_name <- sc_pairs$source[i]
@@ -142,49 +161,46 @@ for(i in 1:nrow(sc_pairs)){
   # Make a scatter plot of target synchrony metric vs AI ---------
   g_scatter <- scatter_vars(syc_df_sub,"AI_gridded",res_name,"source_sink","Aridity Index",res_title,syc_colors[i])+
     theme(legend.position = "none")
-  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_scatter
+  g_scatter_box_SI_ls[[length(g_scatter_box_SI_ls)+1]] <- g_scatter
 
+  # Make a box plot of target synchrony metric across aridity classes -------
+  g_box_AI <- plot_box_groups(syc_df_sub,res_name,"AI_Class",fill_color = syc_colors[i],
+                              x_title = res_title,y_title = "",h_just = 0)
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_AI
+  
   # Make a box plot of target synchrony metric across climate ----------
   # Aggregate climate classes
   g_box_climate_agg <- plot_box_groups(syc_df_sub,res_name,"Koppen_aggregate",fill_color = syc_colors[i],
                                        x_title = res_title,y_title = "",h_just = 0)
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_climate_agg
+  
   # Koppen climate without aggregation
   g_box_climate <- plot_box_groups(syc_df_sub,res_name,"Koppen_clim_class",fill_color = syc_colors[i],
                                    x_title = res_title,y_title = "",box_violin = "Box",h_just = 0)
- 
-  
-  
-  
-  
-  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_climate  
-  
-  
- 
-  
+  g_scatter_box_SI_ls[[length(g_scatter_box_SI_ls)+1]] <- g_box_climate
   
   # Make a box plot of target synchrony metric across IGBP ---------
   # Aggregate IGBP classes
   g_box_IGBP_agg <- plot_box_groups(syc_df_sub,res_name,"IGBP_aggregate",fill_color = syc_colors[i],
                                     x_title = res_title,y_title = "")
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_IGBP_agg
   
   # IGBP without aggregation
   g_box_IGBP <- plot_box_groups(syc_df_sub,res_name,"IGBP_veg",fill_color = syc_colors[i],box_violin = "Box",
                                 x_title = res_title,y_title = "")
+  g_scatter_box_SI_ls[[length(g_scatter_box_SI_ls)+1]] <- g_box_IGBP
   
+  # Make a box plot of target synchrony metric across soil type ------------
+  # Soil with aggregation
+  g_box_soil_agg <- plot_box_groups(syc_df_sub,res_name,"Soil_Group",fill_color = syc_colors[i],
+                                    x_title = res_title,y_title = "")
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_soil_agg
   
-  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_IGBP
+  # Soil without aggregation
+  g_box_soil <- plot_box_groups(syc_df_sub,res_name,"Soil_Type",fill_color = syc_colors[i],box_violin = "Box",
+                                x_title = res_title,y_title = "")
+  g_scatter_box_SI_ls[[length(g_scatter_box_SI_ls)+1]] <- g_box_soil
 
-  # Make a box plot of target syn
-  
-#Add soil!!!  
-  
-
-  
-  
-  
-  
-
-  
   # Make map  ----------------------------
   # Continuous color palette for synchrony values
   map_color <- RColorBrewer::brewer.pal(n=11,name = "YlGn")
@@ -201,11 +217,20 @@ for(i in 1:nrow(sc_pairs)){
 
 # Combine 3 maps for three pairs
 g_map <- plot_grid(plotlist = g_map_ls,nrow=2,align="hv",labels="auto")
-print_g(g_map,paste0("Syc_maps_AI_",res_name),12,6)
+print_g(g_map,paste0("Syc_maps_AI_",res_name),14,7)
 
-# Combine all scatter and box plots
-g_scatter_box <- plot_grid(plotlist = g_scatter_box_ls,ncol=3,align="hv",labels="auto")
-print_g(g_scatter_box,paste0("Syc_compare_",res_name),12,9)
+# Combine all scatter and box plots (main text)
+g_scatter_box <- plot_grid(plotlist = g_scatter_box_ls[c(1,5,9,2,6,10,3,7,11,4,8,12)],
+                           ncol=3,align="hv",labels="auto")
+print_g(g_scatter_box,paste0("Syc_compare_cli_veg_soil_",res_name),16,9)
+
+# Combine all scatter and box plots (SI figure)
+g_scatter_box_SI <- plot_grid(plotlist = g_scatter_box_SI_ls[c(1,5,9,2,6,10,3,7,11,4,8,12)],
+                              ncol=3,align="hv",labels = "auto")
+print_g(g_scatter_box_SI,paste0("Syc_compare_cli_veg_soil_SI_",res_name),16,14)
+
+
+
 
 # Compare synchrony metrics across pairs (for ET as endpoint) ==========
 # Wilcoxon tests
@@ -229,11 +254,16 @@ syc_df_tmp_paired <- syc_df_tmp %>%
   mutate(source_sink = factor(source_sink, levels = c("psi_ET","VPD_ET","TA_ET")))
 
 # Compare synchrony metrics (ET as endpoint) across different pairs
-g_box_pair <- ggplot(data = syc_df_tmp_paired,aes(x=source_sink,y=value,fill=source_sink))+
-  geom_boxplot(outlier.color = "grey")+
+g_box_pair <- ggplot(data = syc_df_tmp_paired,aes(x=source_sink,y=value,fill=source_sink,color=source_sink))+
+  geom_half_violin(alpha=0.5,color=NA)+
+  geom_boxplot(width=0.1,color="black",outlier.color = NA)+
+  geom_jitter(aes(x = as.numeric(source_sink)+0.2),
+              position = position_jitter(width=0.1),
+              alpha=0.7,size=1)+
   my_theme+
   labs(y = res_title,x="")+
   scale_fill_manual(values = pair_color[c(1,3,5)])+
+  scale_color_manual(values = pair_color[c(1,3,5)])+
   scale_x_discrete(labels = c(
     psi_ET = expression(psi %->% ET),
     VPD_ET = expression(VPD %->% ET),
@@ -281,7 +311,7 @@ test <- syc_df_tmp_paired %>%
 # Combine the two boxplots
 g_box <- plot_grid(g_box_pair,g_box_WvsE,align="hv")
 
-print_g(g_box,paste0("Syc_box_",res_name),8,3)
+print_g(g_box,paste0("Syc_box_v2_",res_name),8,3)
 
 # Distributions of synchrony metrics across pairs ================================
 # Box plots of synchrony metrics across different pairs 
