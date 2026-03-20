@@ -707,7 +707,10 @@ syc_map <- function(df, varname,
                     base_colors = NULL,
                     base_n_breaks = 5,
                     base_palette_name = "RdYlBu",
-                    base_direction = 1
+                    base_direction = 1,
+                    size_var = NULL,
+                    size_range = c(2,6),
+                    size_title = "Total TE"
 ) {
   
   # ---- checks ----
@@ -782,27 +785,64 @@ syc_map <- function(df, varname,
   
   # Add points -----
   if(!is.null(shape_var)){
-    g <- g +
-      geom_point(
-        data = df,
-        aes(x = longitude.x, y = latitude.x, fill = .data[[varname]],shape = .data[[shape_var]]),
-        size = 3.5, alpha = 0.8, color = "black"
-      ) +
-      scale_shape_manual(values = shape_values)+
-      labs(fill = legend_title) +
-      ggtitle(g_title) +
-      map_theme  
-  }else{
-    g <- g +
-      geom_point(
-        data = df,
-        aes(x = longitude.x, y = latitude.x, fill = .data[[varname]]),
-        size = 3.5, alpha = 0.8, shape = 21, color = "black"
-      ) +
-      labs(fill = legend_title) +
-      ggtitle(g_title) +
-      map_theme
+    
+    if(!is.null(size_var)){
+      g <- g +
+        geom_point(
+          data = df,
+          aes(x = longitude.x, y = latitude.x,
+              fill = .data[[varname]],
+              shape = .data[[shape_var]],
+              size = .data[[size_var]]),
+          alpha = 0.8, color = "black"
+        ) +
+        scale_shape_manual(values = shape_values) +
+        scale_size_continuous(
+          name = size_title,
+          range = size_range
+        )
+    } else {
+      g <- g +
+        geom_point(
+          data = df,
+          aes(x = longitude.x, y = latitude.x,
+              fill = .data[[varname]],
+              shape = .data[[shape_var]]),
+          size = 3.5, alpha = 0.8, color = "black"
+        ) +
+        scale_shape_manual(values = shape_values)
+    }
+    
+  } else {
+    
+    if(!is.null(size_var)){
+      g <- g +
+        geom_point(
+          data = df,
+          aes(x = longitude.x, y = latitude.x,
+              fill = .data[[varname]],
+              size = .data[[size_var]]),
+          alpha = 0.8, shape = 21, color = "black"
+        ) +
+        scale_size_continuous(
+          name = size_title,
+          range = size_range
+        )
+    } else {
+      g <- g +
+        geom_point(
+          data = df,
+          aes(x = longitude.x, y = latitude.x,
+              fill = .data[[varname]]),
+          size = 3.5, alpha = 0.8, shape = 21, color = "black"
+        )
+    }
   }
+  
+  g <- g +
+    labs(fill = legend_title) +
+    ggtitle(g_title) +
+    map_theme
   
   # ---- label function ----
   label_fun <- function(x) {

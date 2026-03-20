@@ -308,6 +308,10 @@ g_box_WvsE <- ggplot(data = syc_df_tmp_paired,aes(x=Regime,y=value,fill=source_s
 test <- syc_df_tmp_paired %>%
   arrange(source_sink,Regime,desc(value))
 
+# Check sample size:
+syc_df_tmp_paired %>%
+  count(source_sink,Regime)
+
 # Combine the two boxplots
 g_box <- plot_grid(g_box_pair,g_box_WvsE,align="hv")
 

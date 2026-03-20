@@ -1,11 +1,16 @@
 # Author: Zhaozhe Chen
-# Date: 2026.2.8
+# Date: 2026.3.20
 
 # This code is to make maps for Delta
 
 # -------- Global ----------
 library(dplyr)
 library(tidyr)
+library(ggpubr)
+library(FSA) # For Dunn test
+library(forcats)
+library(rstatix)
+library(terra)
 
 # Input path for Synchrony metrics for 12 pairs
 Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
@@ -16,11 +21,14 @@ Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 # Predictor df
 predictor_df <- read.csv("00_Data/perdictor_df_updated.csv")
 
+# Aridity index map
+AI_raster <- rast("00_Data/2022_CONUS_AI.tif")
+
 # Source plotting functions
 source("05_Visualization/Plotting_functions.R")
 source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_V2/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_V3/"
 
 # Season
 season <- "GS"
@@ -45,8 +53,8 @@ source_sink_pair <- data.frame(source = c("psi","VPD","TA"),
                                sink = c("ET","ET","ET"))
 
 # Make maps ===================
-# Initialize a list to store the figures
-g_ls <- list()
+# Initialize a list to store continuous figures
+g_continuous_ls <- list()
 # Initialize a df to store Delta values
 Delta_df <- c()
 # Initialize a list to store scatter and box plots
@@ -55,6 +63,7 @@ g_scatter_box_ls <- list()
 # Colors for scatter and box plots
 syc_colors <- RColorBrewer::brewer.pal(10,"Paired")[c(1,7,9)]
 for(i in 1:nrow(source_sink_pair)){
+  # Data processing -------------------
   source_name <- source_sink_pair$source[i]
   sink_name <- source_sink_pair$sink[i]
   
@@ -69,14 +78,61 @@ for(i in 1:nrow(source_sink_pair)){
     # Calculate delta = syc1 - syc2
     mutate(Delta = syc1 - syc2,
            source_sink = paste0(source_name,"_",sink_name)) %>%
+    # Calculate total TE (syc1 + syc2)
+    mutate(TE_total = syc1 + syc2,
+           logTE_total = log(TE_total)) %>%
+    # Calculate normalized asymmetry index
+    mutate(A = Delta/TE_total) %>%
     # Merge with predictor df
     merge(predictor_df %>%
             rename(site_ID = site_id),by="site_ID") %>%
     # Remove NA
     na.omit()
-  
+
   # Store Delta synchrony metrics to get distribution
   Delta_df <- rbind(Delta_df,syc_df)
+  
+  # Map of continuous Delta, sized by continuous TE_total -----------------------
+  # Continuous color palette for Delta
+  Delta_color <- rev(RColorBrewer::brewer.pal(n=11,name = "PiYG"))
+  g_map_continuous_Delta <- syc_map(syc_df,varname = "Delta",colors=Delta_color,
+                                    legend_title = "Delta",g_title = paste0(source_name,"-",sink_name),
+                                    color_limits = c(-2.5,2.5),end_marks = c("left","right"),
+                                    base_raster = AI_raster,
+                                    size_var = "TE_total",size_title = "Bidirectional coupling strength")+
+    theme(legend.position = "bottom")
+  g_continuous_ls[[i]] <- g_map_continuous_Delta
+
+  # Scatter plot of TE total vs Delta ------
+  
+  
+  # Map of categorical Delta ---------- 
+  
+  
+  
+  
+  # Make categorical map of Delta values ---------------
+  # Calculate quantiles to divide categories
+  q25 <- quantile(syc_df$Delta,probs = 0.25)
+  q75 <- quantile(syc_df$Delta,probs = 0.75)
+  syc_df_categorical <- syc_df %>%
+    mutate(Type = case_when(
+      Delta >= q75 ~ "Driver-dominant",
+      Delta <= q25 ~ "ET-dominant",
+      TRUE ~ "Near-symmetric"))
+  g_map_categorical <- ggplot()+
+    geom_sf(data = CONUS, fill = "grey", color = "black", alpha = 0.3) +
+    geom_point(data = syc_df_categorical,aes(x=longitude.x,y=latitude.x,fill=Type),
+               size=5,alpha=0.8,shape=21,color="black")+
+    map_theme+
+    scale_fill_manual(values = syc_colors)+
+    labs(fill="")
+  
+  
+  
+  
+  
+
   
   # Make a scatter plot of Delta vs AI ----------------
   g_scatter <- scatter_vars(syc_df,"AI_gridded","Delta","source_sink","Aridity Index",
@@ -112,29 +168,6 @@ for(i in 1:nrow(source_sink_pair)){
     annotate("text",label = p_txt,x=Inf,y=-Inf,hjust=1.1,vjust=-0.8,size=5)
   g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_IGBP
   
-  # Make map of Delta value -----------------
-  g_map <- syc_map(syc_df,"Delta",palette_name = "PiYG",
-                   g_title="",
-                   legend_title="Delta",
-                   color_limits=c(-2.5,2.5))  
-  g_ls[[i]] <- g_map
-  
-  # Make categorical map of Delta values ---------------
-  # Calculate quantiles to divide categories
-  q25 <- quantile(syc_df$Delta,probs = 0.25)
-  q75 <- quantile(syc_df$Delta,probs = 0.75)
-  syc_df_categorical <- syc_df %>%
-    mutate(Type = case_when(
-      Delta >= q75 ~ "Driver-dominant",
-      Delta <= q25 ~ "ET-dominant",
-      TRUE ~ "Near-symmetric"))
-  g_map_categorical <- ggplot()+
-    geom_sf(data = CONUS, fill = "grey", color = "black", alpha = 0.3) +
-    geom_point(data = syc_df_categorical,aes(x=longitude.x,y=latitude.x,fill=Type),
-               size=5,alpha=0.8,shape=21,color="black")+
-    map_theme+
-    scale_fill_manual(values = syc_colors)+
-    labs(fill="")
 
 }
 
