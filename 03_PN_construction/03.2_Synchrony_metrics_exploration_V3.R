@@ -28,7 +28,7 @@ AI_raster <- rast("00_Data/2022_CONUS_AI.tif")
 source("05_Visualization/Plotting_functions.R")
 source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_V3/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_V4/"
 
 # Season
 season <- "GS"
@@ -53,10 +53,14 @@ source_sink_pair <- data.frame(source = c("psi","VPD","TA"),
                                sink = c("ET","ET","ET"))
 
 # Make maps ===================
-# Initialize a list to store continuous figures
+# Initialize a list to store continuous maps
 g_continuous_ls <- list()
 # Initialize a df to store Delta values
 Delta_df <- c()
+# Initialize a list to store TEtotal vs Delta scatter plots
+g_TE_Delta_ls <- list()
+# Initialize a list to store all maps (both continuous and categorical)
+g_map_all_ls <- list()
 # Initialize a list to store scatter and box plots
 g_scatter_box_ls <- list()
 
@@ -96,39 +100,99 @@ for(i in 1:nrow(source_sink_pair)){
   # Continuous color palette for Delta
   Delta_color <- rev(RColorBrewer::brewer.pal(n=11,name = "PiYG"))
   g_map_continuous_Delta <- syc_map(syc_df,varname = "Delta",colors=Delta_color,
-                                    legend_title = "Delta",g_title = paste0(source_name,"-",sink_name),
+                                    legend_title = "Directional asymmetry (ΔTE, %)",g_title = paste0(source_name,"-",sink_name),
                                     color_limits = c(-2.5,2.5),end_marks = c("left","right"),
-                                    base_raster = AI_raster,
-                                    size_var = "TE_total",size_title = "Bidirectional coupling strength")+
-    theme(legend.position = "bottom")
+                                    base_limits = c(0,2),base_raster = AI_raster,
+                                    size_var = "TE_total",size_title = "Bidirectional coupling strength (TEtotal, %)")+
+    theme(legend.position = "bottom",
+          legend.box = "vertical")
+  
   g_continuous_ls[[i]] <- g_map_continuous_Delta
+  g_map_all_ls[[length(g_map_all_ls)+1]] <- g_map_continuous_Delta
+  
+  # Scatter plot of TE total vs Delta --------------------
+  # Calculate thresholds to define regimes
+  # This is the threshold for total TE, below which is defined as "Weakly coupled"
+  TE_thr <- quantile(syc_df$TE_total,0.25,na.rm=TRUE)
+  # Symmetry band around Delta = 0
+  Delta_thr <- quantile(abs(syc_df$Delta),0.25,na.rm=TRUE)
+  # Define regimes
+  syc_df <- syc_df %>%
+    mutate(
+      regime = case_when(
+        TE_total < TE_thr ~ "Weakly coupled",
+        abs(Delta) <= Delta_thr ~ "Bidirectional",
+        Delta > Delta_thr ~ "Driver-dominant",
+        Delta < -Delta_thr ~ "ET-dominant"
+      )
+    )
+  Regime_color <- RColorBrewer::brewer.pal(4,"Set2")
+  g_Delta_TE_total_scatter_base <- ggplot(syc_df,
+                                     aes(x = Delta, y = TE_total, color = regime)) +
+    geom_point(size = 2.5, alpha = 0.7) +
+    # Threshold lines
+    geom_vline(xintercept = c(-Delta_thr, 0, Delta_thr),
+               linetype = c("dashed","solid","dashed")) +
+    geom_hline(yintercept = TE_thr, linetype = "dashed") +
+    scale_color_manual(values = c(
+      "Weakly coupled" = "grey70",
+      "Bidirectional" = Regime_color[3],
+      "Driver-dominant" = Regime_color[2],
+      "ET-dominant" = Regime_color[1]
+    )) +
+    labs(
+      x = "Directional asymmetry (ΔTE, %)",
+      y = "Bidirectional coupling strength (TEtotal, %)",
+      color = ""
+    ) +
+    my_theme
+  # Add violin plots for distribution
+  dens_right <- axis_canvas(g_Delta_TE_total_scatter_base,axis = "y",coord_flip = TRUE)+
+    geom_density(data=syc_df,aes(x=TE_total),
+                 outline.type = "full",
+                 fill = "grey",
+                 alpha=0.3)+
+    coord_flip()
+  
+  dens_top <- axis_canvas(g_Delta_TE_total_scatter_base, axis = "x") +
+    geom_density(data = syc_df,aes(x = Delta),
+                 outline.type = "full",fill = "grey",alpha = 0.3)
+  
+  g_Delta_TE_total_scatter <- g_Delta_TE_total_scatter_base
+  
+  g_Delta_TE_total_scatter <- insert_yaxis_grob(g_Delta_TE_total_scatter,
+                                                dens_right,position = "right")
 
-  # Scatter plot of TE total vs Delta ------
+  g_Delta_TE_total_scatter <- insert_xaxis_grob(g_Delta_TE_total_scatter,
+                                                dens_top,position = "top")
   
+  g_TE_Delta_ls[[i]] <- g_Delta_TE_total_scatter
   
-  # Map of categorical Delta ---------- 
+  # Map of categorical Delta -------------------- 
+  regime_colors <- c(
+    "Weakly coupled" = "grey70",
+    "Bidirectional" = Regime_color[3],
+    "Driver-dominant" = Regime_color[2],
+    "ET-dominant" = Regime_color[1]
+  )
+  g_map_discrete_Delta <- syc_map_disc(syc_df,regime_var = "regime",
+                                       regime_colors = regime_colors,
+                                       base_raster = AI_raster,legend_title = "",
+                                       base_limits = c(0,2),g_title = "")
+    
+  g_map_all_ls[[length(g_map_all_ls)+1]] <- g_map_discrete_Delta
   
-  
-  
-  
-  # Make categorical map of Delta values ---------------
-  # Calculate quantiles to divide categories
-  q25 <- quantile(syc_df$Delta,probs = 0.25)
-  q75 <- quantile(syc_df$Delta,probs = 0.75)
-  syc_df_categorical <- syc_df %>%
-    mutate(Type = case_when(
-      Delta >= q75 ~ "Driver-dominant",
-      Delta <= q25 ~ "ET-dominant",
-      TRUE ~ "Near-symmetric"))
-  g_map_categorical <- ggplot()+
-    geom_sf(data = CONUS, fill = "grey", color = "black", alpha = 0.3) +
-    geom_point(data = syc_df_categorical,aes(x=longitude.x,y=latitude.x,fill=Type),
-               size=5,alpha=0.8,shape=21,color="black")+
-    map_theme+
-    scale_fill_manual(values = syc_colors)+
-    labs(fill="")
-  
-  
+}
+
+# Combine continuous Delta maps
+g_continuous_map <- plot_grid(plotlist = g_continuous_ls,ncol=2,align="hv",labels = "auto")
+print_g(g_continuous_map,paste0("Delta_maps_AI_",res_name),14,10)
+# Combine continuous maps, and categorical maps
+g_regimes <- plot_grid(plotlist = g_map_all_ls,ncol=2,labels="auto")
+print_g(g_regimes,paste0("Delta_regimes_",res_name),14,15)
+# Combine TEtotal vs Delta scatter plots
+g_TE_Delta <- plot_grid(plotlist = g_TE_Delta_ls,ncol = 1,align="hv")
+print_g(g_TE_Delta,paste0("TEtotal_Delta_scatter_",res_name),4,12)
   
   
   

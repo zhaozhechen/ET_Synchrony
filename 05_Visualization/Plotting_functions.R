@@ -878,26 +878,102 @@ syc_map <- function(df, varname,
   return(g)
 }
 
-
-# This is the same map function but for discrete values
-syc_map_disc <- function(df,varname,legend_title,g_title){
-  df <- df %>%
-    select(site_ID,latitude,longitude,all_of(varname)) %>%
-    na.omit()
+# This is a simlar function to make maps, but for discrete values
+syc_map_disc <- function(df,
+                         regime_var = "regime",
+                         regime_colors,
+                         legend_title = "",
+                         g_title = "",
+                         base_raster = NULL,
+                         base_name = "Aridity index",
+                         base_alpha = 0.7,
+                         base_limits = c(0,2),
+                         base_palette_name = "RdYlBu",
+                         base_direction = 1) {
   
-  g <- ggplot()+
-    geom_sf(data=CONUS,fill="grey",color="black",alpha=0.3)+
-    geom_point(data=df,aes(x=longitude,y=latitude,
-                           fill=.data[[varname]]),
-               size=5,alpha=0.8,shape=21,color="black")+
+  # ---- base plot ----
+  g <- ggplot() +
+    annotate("rect",
+             xmin = -Inf, xmax = Inf,
+             ymin = -Inf, ymax = Inf,
+             fill = "white", colour = NA)
+  
+  # ---- CONUS boundary ----
+  CONUS_outer_4326 <- sf::st_union(CONUS) |>
+    sf::st_as_sf() |>
+    sf::st_transform(4326)
+  
+  conus_v_4326 <- terra::vect(CONUS_outer_4326)
+  
+  # ---- raster background ----
+  if (!is.null(base_raster)) {
+    
+    base_crop <- terra::crop(base_raster, terra::ext(conus_v_4326))
+    base_conus <- terra::mask(base_crop, conus_v_4326)
+    
+    g <- g +
+      tidyterra::geom_spatraster(data = base_conus, alpha = base_alpha)
+    
+    g <- g +
+      scale_fill_distiller(
+        name = base_name,
+        palette = base_palette_name,
+        direction = base_direction,
+        limits = base_limits,
+        oob = scales::squish,
+        na.value = "white",
+        guide = guide_colorbar(
+          direction = "horizontal",
+          title.position = "top",
+          title.hjust = 0.5
+        )
+      )
+    
+    g <- g + ggnewscale::new_scale_fill()
+  }
+  
+  # ---- CONUS outline ----
+  g <- g +
+    geom_sf(data = sf::st_transform(CONUS, 4326),
+            fill = NA, color = "black", alpha = 0.6) +
+    coord_sf(crs = sf::st_crs(4326), expand = FALSE)
+  
+  # ---- points ----
+  g <- g +
+    geom_point(
+      data = df,
+      aes(x = longitude.x, y = latitude.x,
+          fill = .data[[regime_var]]),
+      size = 3.5,
+      shape = 21,
+      color = "black",
+      alpha = 0.9
+    )
+  
+  # ---- categorical colors ----
+  g <- g +
     scale_fill_manual(
-      values = my_color,
-      guide = guide_legend(override.aes = list(size = 4))
-    )+
-    labs(fill = legend_title)+
-    ggtitle(g_title)+
-    map_theme+
-    theme(legend.position = "bottom")
+      values = regime_colors,
+      name = legend_title,
+      guide = guide_legend(
+        direction = "horizontal",
+        title.position = "top",
+        title.hjust = 0.5
+      )
+    )
+  
+  # ---- theme ----
+  g <- g +
+    ggtitle(g_title) +
+    map_theme +
+    theme(
+      legend.position = "bottom",
+      legend.box = "vertical",
+      legend.direction = "horizontal",
+      panel.background = element_rect(fill = "white", colour = NA),
+      plot.background  = element_rect(fill = "white", colour = NA)
+    )
+  
   return(g)
 }
 
