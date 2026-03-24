@@ -1,7 +1,7 @@
 # Author: Zhaozhe Chen
-# Date: 2026.3.20
+# Date: 2026.3.21
 
-# This code is to make maps for Delta
+# This code is to analyze Delta (TE(driver->ET) - TE(ET->driver))
 
 # -------- Global ----------
 library(dplyr)
@@ -43,6 +43,10 @@ res_title <- c("Peak TE (%)","Daily aggregated TE (%)","Lag (h)")[arrayid]
 # This is the color pallet for paired comparisons
 pair_color <- RColorBrewer::brewer.pal(10,"Paired")[c(1,2,7,8,9,10)]
 
+# Title for Delta and TE total
+Delta_title <- "Directional asymmetry (ΔTE, %)"
+TEtotal_title <- "Bidirectional coupling strength (TEtotal, %)"
+
 # ------- Main --------
 # Data processing ===============================
 # Get full syc_metric name
@@ -63,6 +67,8 @@ g_TE_Delta_ls <- list()
 g_map_all_ls <- list()
 # Initialize a list to store scatter and box plots
 g_scatter_box_ls <- list()
+# Initialize a list to store supplementary figures
+g_scatter_box_SI_ls <- list()
 
 # Colors for scatter and box plots
 syc_colors <- RColorBrewer::brewer.pal(10,"Paired")[c(1,7,9)]
@@ -91,7 +97,71 @@ for(i in 1:nrow(source_sink_pair)){
     merge(predictor_df %>%
             rename(site_ID = site_id),by="site_ID") %>%
     # Remove NA
-    na.omit()
+    na.omit() %>%
+    # Aridity classes, based on Huang et al. 2016
+    mutate(AI_Class = case_when(AI_gridded <0.2 ~ "Arid",
+                                (AI_gridded >= 0.2 & AI_gridded < 0.5) ~ "Semiarid",
+                                (AI_gridded >= 0.5 & AI_gridded < 0.65) ~ "Semihumid",
+                                AI_gridded >= 0.65 ~ "Humid")) %>%
+    mutate(AI_Class = factor(AI_Class,levels=c("Arid","Semiarid","Semihumid","Humid")))%>%
+    # Aggregate some Koppen climate classes, due to small sample size in some of the original classes
+    mutate(
+      Koppen_aggregate = case_when(
+        Koppen_clim_class %in% c("Bsh","Bsk","Bwh","Bwk") ~ "Dry",
+        Koppen_clim_class %in% c("Cfa","Cwa")              ~ "Humid_subtropical",
+        Koppen_clim_class %in% c("Csa","Csb")              ~ "Mediterranean",
+        Koppen_clim_class %in% c("Dfa","Dfb","Dsa","Dsb")  ~ "Humid_continental",
+        Koppen_clim_class == "Dfc"                         ~ "Subarctic",
+        TRUE ~ Koppen_clim_class
+      )
+    ) %>%
+    mutate(Koppen_aggregate = factor(Koppen_aggregate,levels = c("Dry","Mediterranean","Humid_subtropical",
+                                                                 "Humid_continental","Subarctic"))) %>%
+    # Update climate classes names
+    mutate(Koppen_clim_class = case_when(Koppen_clim_class == "Bsh"~"BSh",
+                                         Koppen_clim_class == "Bsk"~"BSk",
+                                         Koppen_clim_class == "Bwh"~"BWh",
+                                         Koppen_clim_class == "Bwk"~"BWk",
+                                         TRUE ~ Koppen_clim_class))%>%
+    # Add empty levels to Koppen climate classes for plotting
+    mutate(
+      Koppen_clim_class = factor(Koppen_clim_class,levels = c("BSh","BSk","BWh","BWk","",
+                                                              "Csa","Csb"," ",
+                                                              "Cfa","Cwa","  ",
+                                                              "Dfa","Dfb","Dsa","Dsb","   ",
+                                                              "Dfc"))) %>%
+    # Aggregate some IGBP classes, due to small sample size in some of the original classes
+    mutate(IGBP_aggregate = case_when(
+      IGBP_veg %in% c("ENF","DBF","MF") ~ "Forest",
+      IGBP_veg %in% c("CSH","OSH") ~ "Shrubland",
+      IGBP_veg %in% c("WSA","SAV","GRA")~"Savanna/Grass",
+      IGBP_veg %in% c("CRO","CVM")~ "Cropland"
+    )) %>%
+    mutate(IGBP_aggregate = factor(IGBP_aggregate,levels = c("Cropland","Savanna/Grass","Shrubland","Forest"))) %>%
+    # Add empty levels to IGBP for plotting
+    mutate(IGBP_veg = factor(IGBP_veg,levels = c("ENF","DBF","MF","",
+                                                 "CSH","OSH","  ",
+                                                 "WSA","SAV","GRA","   ",
+                                                 "CRO","CVM"))) %>%
+    left_join(Site_info %>%
+                select(site_ID = site_id,Soil_Type = Description),by="site_ID") %>%
+    mutate(Soil_Type = factor(Soil_Type,levels=rev(c("Sand","Loamy sand",
+                                                     "    ","Sandy loam",
+                                                     "   ","Loam","Silt loam",
+                                                     "  ","Clay loam","Silty clay loam",
+                                                     " ","Silty clay","Clay")))) %>%
+    # Ref: USDA The Soil Survey Manual 2017 p123-126
+    mutate(Soil_Group = case_when(
+      Soil_Type %in% c("Clay","Silty clay") ~ "Fine",
+      Soil_Type %in% c("Silty clay loam","Clay loam") ~ "Moderately fine",
+      Soil_Type %in% c("Loam","Silt loam") ~ "Medium",
+      Soil_Type %in% c("Sandy loam") ~ "Moderately coarse",
+      Soil_Type %in% c("Loamy sand","Sand") ~ "Coarse",
+      TRUE ~ NA_character_
+    ),
+    Soil_Group = factor(Soil_Group,levels=c("Fine","Moderately fine","Medium","Moderately coarse","Coarse"))) %>%
+    # Filter out outlier
+    filter(site_ID!="US-CS1" & site_ID!= "US-NC1")
 
   # Store Delta synchrony metrics to get distribution
   Delta_df <- rbind(Delta_df,syc_df)
@@ -100,10 +170,10 @@ for(i in 1:nrow(source_sink_pair)){
   # Continuous color palette for Delta
   Delta_color <- rev(RColorBrewer::brewer.pal(n=11,name = "PiYG"))
   g_map_continuous_Delta <- syc_map(syc_df,varname = "Delta",colors=Delta_color,
-                                    legend_title = "Directional asymmetry (ΔTE, %)",g_title = paste0(source_name,"-",sink_name),
+                                    legend_title = Delta_title,g_title = paste0(source_name,"-",sink_name),
                                     color_limits = c(-2.5,2.5),end_marks = c("left","right"),
                                     base_limits = c(0,2),base_raster = AI_raster,
-                                    size_var = "TE_total",size_title = "Bidirectional coupling strength (TEtotal, %)")+
+                                    size_var = "TE_total",size_title = TEtotal_title)+
     theme(legend.position = "bottom",
           legend.box = "vertical")
   
@@ -141,8 +211,8 @@ for(i in 1:nrow(source_sink_pair)){
       "ET-dominant" = Regime_color[1]
     )) +
     labs(
-      x = "Directional asymmetry (ΔTE, %)",
-      y = "Bidirectional coupling strength (TEtotal, %)",
+      x = Delta_title,
+      y = TEtotal_title,
       color = ""
     ) +
     my_theme
@@ -182,6 +252,52 @@ for(i in 1:nrow(source_sink_pair)){
     
   g_map_all_ls[[length(g_map_all_ls)+1]] <- g_map_discrete_Delta
   
+  
+  # Box plots and scatter plots of Delta across variable groups ---------------
+  # scatter plot of Delta vs AI -----
+  g_scatter <- scatter_vars(syc_df,"AI_gridded","Delta","source_sink",
+                            "Aridity Index",Delta_title,syc_colors[i])+
+    theme(legend.position = "none")
+  g_scatter_box_SI_ls[[length(g_scatter_box_SI_ls)+1]] <- g_scatter
+  
+  # Box plot of Delta across aridity classes ------
+  g_box_AI <- plot_box_groups(syc_df,"Delta","AI_Class",fill_color = syc_colors[i],
+                              x_title = Delta_title,y_title = "",h_just = 0)
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_AI
+  
+  # Box plot of Delta across climate ----------
+  # Aggregate climate classes
+  g_box_climate_agg <- plot_box_groups(syc_df,"Delta","Koppen_aggregate",fill_color = syc_colors[i],
+                                       x_title = Delta_title,y_title = "",h_just = 0)
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_climate_agg
+  
+  # Koppen climate without aggregation
+  g_box_climate <- plot_box_groups(syc_df,"Delta","Koppen_clim_class",fill_color = syc_colors[i],
+                                   x_title = Delta_title,y_title = "",box_violin = "Box",h_just = 0)
+  g_scatter_box_SI_ls[[length(g_scatter_box_SI_ls)+1]] <- g_box_climate
+  
+  # Box plot of Delta across IGBP ---------
+  # Aggregate IGBP classes
+  g_box_IGBP_agg <- plot_box_groups(syc_df,"Delta","IGBP_aggregate",fill_color = syc_colors[i],
+                                    x_title = Delta_title,y_title = "")
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_IGBP_agg
+  
+  # IGBP without aggregation
+  g_box_IGBP <- plot_box_groups(syc_df,"Delta","IGBP_veg",fill_color = syc_colors[i],box_violin = "Box",
+                                x_title = Delta_title,y_title = "")
+  g_scatter_box_SI_ls[[length(g_scatter_box_SI_ls)+1]] <- g_box_IGBP
+  
+  # Box plots of Delta across soil type ------------
+  # Soil with aggregation
+  g_box_soil_agg <- plot_box_groups(syc_df,"Delta","Soil_Group",fill_color = syc_colors[i],
+                                    x_title = Delta_title,y_title = "")
+  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_soil_agg
+  
+  # Soil without aggregation
+  g_box_soil <- plot_box_groups(syc_df,"Delta","Soil_Type",fill_color = syc_colors[i],box_violin = "Box",
+                                x_title = Delta_title,y_title = "")
+  g_scatter_box_SI_ls[[length(g_scatter_box_SI_ls)+1]] <- g_box_soil
+  
 }
 
 # Combine continuous Delta maps
@@ -194,58 +310,17 @@ print_g(g_regimes,paste0("Delta_regimes_",res_name),14,15)
 g_TE_Delta <- plot_grid(plotlist = g_TE_Delta_ls,ncol = 1,align="hv")
 print_g(g_TE_Delta,paste0("TEtotal_Delta_scatter_",res_name),4,12)
   
-  
-  
+# Combine boxplots (Main text)
+g_scatter_box <- plot_grid(plotlist = g_scatter_box_ls[c(1,5,9,2,6,10,3,7,11,4,8,12)],
+                           ncol=3,align="hv",labels="auto")
+print_g(g_scatter_box,"Delta_compare_cli_veg_soil",16,9)
 
-  
-  # Make a scatter plot of Delta vs AI ----------------
-  g_scatter <- scatter_vars(syc_df,"AI_gridded","Delta","source_sink","Aridity Index",
-                            "Directional difference in TE(%)",syc_colors[i])+
-    theme(legend.position = "none")
-  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_scatter
-  
-  # Make a box plot of Delta across climate -----------
-  g_box_climate <- plot_box(syc_df,"Delta","Koppen_clim_class",fill_color=syc_colors[i],
-                            "Directional difference in TE(%)","")
-  # Statistical test, compare target synchrony metric across climate group
-  k_result <- kruskal.test(
-    syc_df$Delta ~ syc_df$Koppen_clim_class
-  )
-  # Get p-value
-  p_txt <- paste0("p = ",formatC(k_result$p.value, format = "e", digits = 2))
-  # Add p-value to the plot
-  g_box_climate <- g_box_climate +
-    annotate("text",label = p_txt,x=Inf,y=-Inf,hjust=1.1,vjust=-0.8,size=5)
-  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_climate  
-  
-  # Make a box plot of Delta across IGBP ---------
-  g_box_IGBP <- plot_box(syc_df,"Delta","IGBP_veg",fill_color = syc_colors[i],
-                         "Directional difference in TE(%)","")
-  # Statistical test, compare target synchrony metric across climate group
-  k_result <- kruskal.test(
-    syc_df$Delta ~ syc_df$IGBP_veg
-  )
-  # Get p-value
-  p_txt <- paste0("p = ",formatC(k_result$p.value, format = "e", digits = 2))
-  # Add p-value to the plot
-  g_box_IGBP <- g_box_IGBP +
-    annotate("text",label = p_txt,x=Inf,y=-Inf,hjust=1.1,vjust=-0.8,size=5)
-  g_scatter_box_ls[[length(g_scatter_box_ls)+1]] <- g_box_IGBP
-  
+# Combine all scatter and box plots (SI figure)
+g_scatter_box_SI <- plot_grid(plotlist = g_scatter_box_SI_ls[c(1,5,9,2,6,10,3,7,11,4,8,12)],
+                              ncol=3,align="hv",labels = "auto")
+print_g(g_scatter_box_SI,"Delta_compare_cli_veg_soil_SI",16,14)
 
-}
 
-# Combine maps
-g_map_all <- plot_grid(plotlist = g_ls,
-                       nrow=2,align="v",labels = "auto")
-
-# Output this figure
-print_g(g_map_all,paste0("Delta_maps_",res_name),
-        12,6)
-
-# Combine all scatter and box plots
-g_scatter_box <- plot_grid(plotlist = g_scatter_box_ls,ncol=3,align="hv",labels="auto")
-print_g(g_scatter_box,paste0("Delta_compare_",res_name),12,9)
 
 # Compare synchrony metrics across pairs =============
 # Wilcoxon tests
@@ -255,7 +330,7 @@ my_comparisons <- list(
   c("VPD_ET", "TA_ET")
 )
 
-# Process syc_df_tmp to make sure each site has three synchrony metrics
+# Process syc_df_tmp to make sure each site has three Delta values
 syc_df_tmp_paired <- Delta_df %>%
   select(site_ID,source_sink,value = Delta) %>%
   # Convert to long data to force matching
@@ -268,15 +343,21 @@ syc_df_tmp_paired <- Delta_df %>%
                values_to = "value") %>%
   mutate(source_sink = factor(source_sink, levels = c("psi_ET","VPD_ET","TA_ET")))
 
-g_box_pair <- ggplot(data = syc_df_tmp_paired,aes(x=source_sink,y=value,fill=source_sink))+
-  geom_boxplot(outlier.color = "grey")+
+# Compare synchrony metrics (ET as endpoint) across different pairs
+g_box_pair <- ggplot(data = syc_df_tmp_paired,aes(x=source_sink,y=value,fill=source_sink,color=source_sink))+
+  geom_half_violin(alpha=0.5,color=NA)+
+  geom_boxplot(width=0.1,color="black",outlier.color = NA)+
+  geom_jitter(aes(x = as.numeric(source_sink)+0.2),
+              position = position_jitter(width=0.1),
+              alpha=0.7,size=1)+
   my_theme+
-  labs(y = paste0("Delta ",res_title),x="")+
+  labs(y = Delta_title,x="")+
   scale_fill_manual(values = pair_color[c(1,3,5)])+
+  scale_color_manual(values = pair_color[c(1,3,5)])+
   scale_x_discrete(labels = c(
-    psi_ET = expression(psi~","~ET),
-    VPD_ET = expression(VPD~","~ET),
-    TA_ET  = expression(T[air]~","~ET)
+    psi_ET = expression(psi %->% ET),
+    VPD_ET = expression(VPD %->% ET),
+    TA_ET  = expression(T[air] %->% ET)
   ))+
   stat_compare_means(
     comparisons = my_comparisons,
@@ -290,6 +371,8 @@ g_box_pair <- ggplot(data = syc_df_tmp_paired,aes(x=source_sink,y=value,fill=sou
   scale_y_continuous(expand = expansion(mult = c(0.05,0.15)))
 
 print_g(g_box_pair,paste0("Delta_box_",res_name),4,3)
+
+
 
 
 

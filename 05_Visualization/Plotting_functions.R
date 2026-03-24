@@ -1840,6 +1840,9 @@ plot_box_groups <- function(df,varname1,varname2,fill_color,x_title,y_title,
       # Generate compact letters
       letters <- multcompView::multcompLetters(pvec)$Letters
       
+      # check if all letters are the same
+      all_same <- length(unique(letters)) == 1
+      
       letter_df <- data.frame(
         group = names(letters),
         letters = letters,
@@ -1859,24 +1862,48 @@ plot_box_groups <- function(df,varname1,varname2,fill_color,x_title,y_title,
         dplyr::mutate(x = x_max + letter_offset_frac * x_span)
       
       # Add letters
-      if(box_violin == "Box"){
-        g <- g +
-          geom_text(data=letter_df,
-                    aes(x=x,y=group,label=letters),
-                    inherit.aes = FALSE,
-                    hjust=0,
-                    size=4)        
+      if(all_same){
+        # No pairwise differences → show p-value instead
+        if(box_violin == "Box"){
+          g <- g +
+            annotate("text",
+                     label = p_txt,
+                     x = Inf,
+                     y = -Inf,
+                     hjust = 1.1,
+                     vjust = -0.8,
+                     size = 5)
+        } else {
+          g <- g +
+            annotate("text",
+                     label = p_txt,
+                     y = Inf,
+                     x = -Inf,
+                     hjust = 1.1,
+                     vjust = -0.8,
+                     size = 5)
+        }
       }else{
-        g <- g +
-          geom_text(data=letter_df,
-                    aes(y=x,x=group,label=letters),
-                    inherit.aes = FALSE,
-                    vjust=0,
-                    size=4)
+        # Add letters (your original code unchanged)
+        if(box_violin == "Box"){
+          g <- g +
+            geom_text(data=letter_df,
+                      aes(x=x,y=group,label=letters),
+                      inherit.aes = FALSE,
+                      hjust=0,
+                      size=4)        
+        }else{
+          g <- g +
+            geom_text(data=letter_df,
+                      aes(y=x,x=group,label=letters),
+                      inherit.aes = FALSE,
+                      vjust=0,
+                      size=4)
+        }
       }
-
     }  
   }
   
   return(g)
 }
+
