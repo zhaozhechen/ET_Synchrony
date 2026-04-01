@@ -1907,3 +1907,212 @@ plot_box_groups <- function(df,varname1,varname2,fill_color,x_title,y_title,
   return(g)
 }
 
+# This function is to make Peak TE vs lag plots
+plot_TE_vs_lag <- function(shape_var){
+  g <- ggplot(data=syc_df,aes(x = GS_best_lag,y=forcats::fct_rev(source_sink)))+
+    geom_point(aes(size=GS_daily_p_TE^4,color=source_sink,shape=.data[[shape_var]]))+
+    scale_color_manual(values = pair_color)+
+    my_theme+
+    labs(x = "Lag (h)",y="")+
+    scale_y_discrete(labels = c(
+      psi_ET = expression(psi %->% ET),
+      ET_psi = expression(ET %->% psi),
+      VPD_ET = expression(VPD %->% ET),
+      ET_VPD = expression(ET %->% VPD),
+      TA_ET  = expression(T[air] %->% ET),
+      ET_TA  = expression(ET %->% T[air])
+    ))+
+    scale_size_continuous(
+      name = "Peak TE (%)",
+      breaks = c(2, 4, 8, 16)^4,   # breaks in plotted (transformed) space
+      labels = c("2", "4", "8", "16"),
+      range = c(2, 10)
+    )+
+    guides(color = "none")+
+    theme(legend.position = "right")
+  return(g)
+}
+
+# Vertical version of box plot distributions across groups, specifically designed for lags
+plot_lag_violin_box <- function(df, group_var, fill_color = "grey80",
+                                show_n = TRUE,
+                                show_letters = TRUE,
+                                letter_offset_frac = 0.03) {
+  
+  # keep needed columns
+  df <- df[, c("GS_best_lag", "source_sink", group_var)]
+  df <- df[complete.cases(df), , drop = FALSE]
+  
+  # preserve group levels if already factor
+  lev_group <- if (is.factor(df[[group_var]])) levels(df[[group_var]]) else NULL
+  if (!is.null(lev_group)) {
+    df[[group_var]] <- factor(df[[group_var]], levels = lev_group)
+  } else {
+    df[[group_var]] <- factor(df[[group_var]])
+  }
+  
+  # preserve source_sink levels if already factor
+  lev_ss <- if (is.factor(df$source_sink)) levels(df$source_sink) else NULL
+  if (!is.null(lev_ss)) {
+    df$source_sink <- factor(df$source_sink, levels = lev_ss)
+  } else {
+    df$source_sink <- factor(df$source_sink)
+  }
+  
+  # facet labels as expressions
+  facet_labs <- c(
+    psi_ET = "psi %->% ET",
+    ET_psi = "ET %->% psi",
+    VPD_ET = "VPD %->% ET",
+    ET_VPD = "ET %->% VPD",
+    TA_ET  = "T[air] %->% ET",
+    ET_TA  = "ET %->% T[air]"
+  )
+  
+  # base plot
+  g <- ggplot(df, aes(x = .data[[group_var]], y = GS_best_lag)) +
+    geom_violin(fill = fill_color, alpha = 0.5, color = NA, trim = FALSE) +
+    geom_boxplot(width = 0.15, outlier.color = NA) +
+    facet_wrap(
+      ~source_sink,
+      scales = "free_y",
+      labeller = as_labeller(facet_labs, label_parsed)
+    ) +
+    labs(x = NULL, y = "Lag (h)") +
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.20))) +
+    coord_cartesian(clip = "off") +
+    my_theme
+  
+  # sample size
+  if (show_n) {
+    n_df <- df %>%
+      dplyr::group_by(source_sink, .data[[group_var]]) %>%
+      dplyr::summarise(
+        n = dplyr::n(),
+        y_max = max(GS_best_lag, na.rm = TRUE),
+        y_min = min(GS_best_lag, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      dplyr::mutate(
+        y = y_max + 0.08 * ifelse(y_max - y_min == 0, 1, y_max - y_min)
+      )
+    
+    g <- g +
+      geom_text(
+        data = n_df,
+        aes(x = .data[[group_var]], y = y, label = n),
+        inherit.aes = FALSE,
+        size = 4
+      )
+  }
+  
+  # store annotations separately
+  p_list <- list()
+  letter_list <- list()
+  
+  for (ss in levels(df$source_sink)) {
+    sub_df <- df[df$source_sink == ss, , drop = FALSE]
+    
+    # remove unused factor levels within facet
+    sub_df[[group_var]] <- droplevels(sub_df[[group_var]])
+    
+    # skip if too few groups
+    if (nrow(sub_df) == 0 || length(unique(na.omit(sub_df[[group_var]]))) < 2) next
+    
+    # Kruskal-Wallis
+    k_result <- kruskal.test(sub_df$GS_best_lag ~ sub_df[[group_var]])
+    p_txt <- paste0("p = ", formatC(k_result$p.value, format = "e", digits = 2))
+    
+    y_rng  <- range(sub_df$GS_best_lag, na.rm = TRUE)
+    y_span <- diff(y_rng)
+    if (y_span == 0) y_span <- 1
+    
+    first_group <- levels(sub_df[[group_var]])[1]
+    
+    if (k_result$p.value > 0.05) {
+      p_list[[length(p_list) + 1]] <- data.frame(
+        source_sink = ss,
+        x = first_group,
+        y = y_rng[2] + 0.15 * y_span,
+        label = p_txt,
+        stringsAsFactors = FALSE
+      )
+      
+    } else if (show_letters) {
+      dunn_res <- FSA::dunnTest(
+        x = sub_df$GS_best_lag,
+        g = sub_df[[group_var]],
+        method = "bh"
+      )$res
+      
+      pairs <- strsplit(dunn_res$Comparison, " - ")
+      group1 <- sapply(pairs, `[`, 1)
+      group2 <- sapply(pairs, `[`, 2)
+      
+      pvec <- dunn_res$P.adj
+      names(pvec) <- paste(group1, group2, sep = "-")
+      
+      letters <- multcompView::multcompLetters(pvec)$Letters
+      all_same <- length(unique(letters)) == 1
+      
+      if (all_same) {
+        p_list[[length(p_list) + 1]] <- data.frame(
+          source_sink = ss,
+          x = first_group,
+          y = y_rng[2] + 0.15 * y_span,
+          label = p_txt,
+          stringsAsFactors = FALSE
+        )
+      } else {
+        letter_df <- data.frame(
+          group = names(letters),
+          label = letters,
+          stringsAsFactors = FALSE
+        )
+        
+        y_max_df <- sub_df %>%
+          dplyr::group_by(.data[[group_var]]) %>%
+          dplyr::summarise(
+            y_max = max(GS_best_lag, na.rm = TRUE),
+            .groups = "drop"
+          ) %>%
+          dplyr::rename(group = !!group_var)
+        
+        letter_df <- dplyr::left_join(letter_df, y_max_df, by = "group") %>%
+          dplyr::mutate(
+            source_sink = ss,
+            x = group,
+            y = y_max + letter_offset_frac * y_span
+          )
+        
+        letter_list[[length(letter_list) + 1]] <- letter_df
+      }
+    }
+  }
+  
+  if (length(p_list) > 0) {
+    p_df <- dplyr::bind_rows(p_list)
+    g <- g +
+      geom_text(
+        data = p_df,
+        aes(x = x, y = y, label = label),
+        inherit.aes = FALSE,
+        hjust = 0,
+        size = 4
+      )
+  }
+  
+  if (length(letter_list) > 0) {
+    letter_df <- dplyr::bind_rows(letter_list)
+    g <- g +
+      geom_text(
+        data = letter_df,
+        aes(x = x, y = y, label = label),
+        inherit.aes = FALSE,
+        vjust = 0,
+        size = 4
+      )
+  }
+  
+  return(g)
+}

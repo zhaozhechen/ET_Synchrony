@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Update Date: 2026.2.28
+# Update Date: 2026.3.31
 
 # This code is to explore synchrony strength among pairs
 
@@ -32,7 +32,7 @@ source("05_Visualization/Plotting_functions.R")
 source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 
 # Output path of figures
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_V3/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_V5/"
 
 season <- "GS"
 
@@ -339,28 +339,19 @@ print_g(g_box,paste0("Box_",res_name),3,4)
 
 
 # Make plot including both lag and peak TE =========================
-g_lag_TE <- ggplot(data=syc_df,aes(x = GS_best_lag,y=forcats::fct_rev(source_sink)))+
-  geom_point(aes(size=GS_daily_p_TE^4,color=source_sink))+
-  scale_color_manual(values = pair_color)+
-  my_theme+
-  labs(x = "Lag (h)",y="")+
-  scale_y_discrete(labels = c(
-    psi_ET = expression(psi %->% ET),
-    ET_psi = expression(ET %->% psi),
-    VPD_ET = expression(VPD %->% ET),
-    ET_VPD = expression(ET %->% VPD),
-    TA_ET  = expression(T[air] %->% ET),
-    ET_TA  = expression(ET %->% T[air])
-  ))+
-  scale_size_continuous(
-    name = "Peak TE (%)",
-    breaks = c(2, 4, 8, 16)^4,   # breaks in plotted (transformed) space
-    labels = c("2", "4", "8", "16"),
-    range = c(2, 10)
-  )+
-  theme(legend.position = "right")
+g_lag_TE_AI <- plot_TE_vs_lag("AI_Class")
+g_lag_TE_climate <- plot_TE_vs_lag("Koppen_aggregate")+
+  guides(size = "none")
+g_lag_TE_IGBP <- plot_TE_vs_lag("IGBP_aggregate")+
+  guides(size = "none")
+g_lag_TE_soil <- plot_TE_vs_lag("Soil_Group")+
+  guides(size = "none")
 
-print_g(g_lag_TE,paste0("Lag_TE_plot"),8,4)
+# Combine these plots
+g_lag_TE <- plot_grid(g_lag_TE_AI,g_lag_TE_climate,g_lag_TE_IGBP,g_lag_TE_soil,
+                      ncol=1,align="hv")
+
+print_g(g_lag_TE,paste0("Lag_TE_plot_v2"),8,16)
 
 
 syc_df %>%
