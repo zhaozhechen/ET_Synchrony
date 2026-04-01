@@ -12,6 +12,8 @@ library(ggrepel)
 library(wesanderson)
 library(tidyterra)
 library(ggnewscale)
+library(ggbreak)
+library(patchwork)
 
 # Make CONUS boundary
 # Whole US map
@@ -1933,34 +1935,35 @@ plot_TE_vs_lag <- function(shape_var){
   return(g)
 }
 
-# Vertical version of box plot distributions across groups, specifically designed for lags
-plot_lag_violin_box <- function(df, group_var, fill_color = "grey80",
-                                show_n = TRUE,
-                                show_letters = TRUE,
-                                letter_offset_frac = 0.03) {
+# This function makes box plots, with facets
+plot_box_groups_facet <- function(df, varname1, varname2, fill_colors,
+                                  x_title, y_title,
+                                  show_letters = TRUE,
+                                  letter_offset_frac = 0.03,
+                                  box_violin = "Violin") {
   
-  # keep needed columns
-  df <- df[, c("GS_best_lag", "source_sink", group_var)]
+  # keep only needed columns
+  df <- df[, c(varname1, varname2, "source_sink"), drop = FALSE]
   df <- df[complete.cases(df), , drop = FALSE]
   
-  # preserve group levels if already factor
-  lev_group <- if (is.factor(df[[group_var]])) levels(df[[group_var]]) else NULL
-  if (!is.null(lev_group)) {
-    df[[group_var]] <- factor(df[[group_var]], levels = lev_group)
+  # preserve levels
+  lev2 <- if (is.factor(df[[varname2]])) levels(df[[varname2]]) else NULL
+  lev_ss <- if (is.factor(df$source_sink)) levels(df$source_sink) else NULL
+  
+  if (!is.null(lev2)) {
+    df[[varname2]] <- factor(df[[varname2]], levels = lev2)
   } else {
-    df[[group_var]] <- factor(df[[group_var]])
+    df[[varname2]] <- factor(df[[varname2]])
   }
   
-  # preserve source_sink levels if already factor
-  lev_ss <- if (is.factor(df$source_sink)) levels(df$source_sink) else NULL
   if (!is.null(lev_ss)) {
     df$source_sink <- factor(df$source_sink, levels = lev_ss)
   } else {
     df$source_sink <- factor(df$source_sink)
   }
   
-  # facet labels as expressions
-  facet_labs <- c(
+  # source-sink labels
+  ss_labs <- c(
     psi_ET = "psi %->% ET",
     ET_psi = "ET %->% psi",
     VPD_ET = "VPD %->% ET",
@@ -1970,78 +1973,83 @@ plot_lag_violin_box <- function(df, group_var, fill_color = "grey80",
   )
   
   # base plot
-  g <- ggplot(df, aes(x = .data[[group_var]], y = GS_best_lag)) +
-    geom_violin(fill = fill_color, alpha = 0.5, color = NA, trim = FALSE) +
-    geom_boxplot(width = 0.15, outlier.color = NA) +
-    facet_wrap(
-      ~source_sink,
-      scales = "free_y",
-      labeller = as_labeller(facet_labs, label_parsed)
-    ) +
-    labs(x = NULL, y = "Lag (h)") +
-    scale_y_continuous(expand = expansion(mult = c(0.05, 0.20))) +
-    coord_cartesian(clip = "off") +
-    my_theme
-  
-  # sample size
-  if (show_n) {
-    n_df <- df %>%
-      dplyr::group_by(source_sink, .data[[group_var]]) %>%
-      dplyr::summarise(
-        n = dplyr::n(),
-        y_max = max(GS_best_lag, na.rm = TRUE),
-        y_min = min(GS_best_lag, na.rm = TRUE),
-        .groups = "drop"
-      ) %>%
-      dplyr::mutate(
-        y = y_max + 0.08 * ifelse(y_max - y_min == 0, 1, y_max - y_min)
-      )
+  if (box_violin == "Box") {
+    g <- ggplot(df, aes(x = .data[[varname1]], y = .data[[varname2]])) +
+      geom_boxplot(aes(fill = source_sink), outlier.colour = "grey") +
+      facet_wrap(
+        ~source_sink,
+        scales = "free_y",
+        labeller = as_labeller(ss_labs, label_parsed)
+      ) +
+      scale_fill_manual(values = fill_colors) +
+      my_theme +
+      labs(x = x_title, y = y_title) +
+      coord_cartesian(clip = "off") +
+      theme(
+        plot.margin = margin(r = 40, b = 20),
+        legend.position = "none"
+      ) +
+      scale_y_discrete(drop = FALSE)
     
-    g <- g +
-      geom_text(
-        data = n_df,
-        aes(x = .data[[group_var]], y = y, label = n),
-        inherit.aes = FALSE,
-        size = 4
-      )
+  } else {
+    g <- ggplot(df, aes(x = .data[[varname2]], y = .data[[varname1]])) +
+      geom_half_violin(
+        aes(fill = source_sink),
+        alpha = 0.5, color = NA, side = "r"
+      ) +
+      geom_boxplot(width = 0.1, color = "black", outlier.color = NA) +
+      geom_jitter(
+        aes(x = as.numeric(.data[[varname2]]) - 0.2,
+            color = source_sink),
+        width = 0.1,
+        height = 0,
+        alpha = 0.7,
+        show.legend = FALSE
+      ) +
+      facet_wrap(
+        ~source_sink,
+        scales = "free_x",
+        labeller = as_labeller(ss_labs, label_parsed)
+      ) +
+      scale_fill_manual(values = fill_colors) +
+      scale_color_manual(values = fill_colors) +
+      coord_flip(clip = "off") +
+      my_theme +
+      labs(y = x_title, x = y_title) +
+      theme(
+        plot.margin = margin(r = 40, b = 20),
+        legend.position = "none"
+      ) +
+      scale_x_discrete(drop = FALSE)
   }
   
-  # store annotations separately
-  p_list <- list()
-  letter_list <- list()
+  # statistics by facet
+  ann_ls <- list()
   
   for (ss in levels(df$source_sink)) {
-    sub_df <- df[df$source_sink == ss, , drop = FALSE]
+    df_sub <- df %>%
+      dplyr::filter(source_sink == ss) %>%
+      droplevels()
     
-    # remove unused factor levels within facet
-    sub_df[[group_var]] <- droplevels(sub_df[[group_var]])
+    if (nrow(df_sub) == 0) next
+    if (length(unique(stats::na.omit(df_sub[[varname2]]))) < 2) next
     
-    # skip if too few groups
-    if (nrow(sub_df) == 0 || length(unique(na.omit(sub_df[[group_var]]))) < 2) next
+    k_result <- kruskal.test(df_sub[[varname1]] ~ df_sub[[varname2]])
+    p_txt <- paste0("p = ", sprintf("%.2f", k_result$p.value))
     
-    # Kruskal-Wallis
-    k_result <- kruskal.test(sub_df$GS_best_lag ~ sub_df[[group_var]])
-    p_txt <- paste0("p = ", formatC(k_result$p.value, format = "e", digits = 2))
-    
-    y_rng  <- range(sub_df$GS_best_lag, na.rm = TRUE)
-    y_span <- diff(y_rng)
-    if (y_span == 0) y_span <- 1
-    
-    first_group <- levels(sub_df[[group_var]])[1]
-    
+    # non-significant: show p at bottom right
     if (k_result$p.value > 0.05) {
-      p_list[[length(p_list) + 1]] <- data.frame(
+      ann_ls[[length(ann_ls) + 1]] <- data.frame(
         source_sink = ss,
-        x = first_group,
-        y = y_rng[2] + 0.15 * y_span,
+        type = "p",
         label = p_txt,
         stringsAsFactors = FALSE
       )
       
     } else if (show_letters) {
       dunn_res <- FSA::dunnTest(
-        x = sub_df$GS_best_lag,
-        g = sub_df[[group_var]],
+        x = df_sub[[varname1]],
+        g = df_sub[[varname2]],
         method = "bh"
       )$res
       
@@ -2056,62 +2064,89 @@ plot_lag_violin_box <- function(df, group_var, fill_color = "grey80",
       all_same <- length(unique(letters)) == 1
       
       if (all_same) {
-        p_list[[length(p_list) + 1]] <- data.frame(
+        ann_ls[[length(ann_ls) + 1]] <- data.frame(
           source_sink = ss,
-          x = first_group,
-          y = y_rng[2] + 0.15 * y_span,
+          type = "p",
           label = p_txt,
           stringsAsFactors = FALSE
         )
       } else {
         letter_df <- data.frame(
+          source_sink = ss,
           group = names(letters),
-          label = letters,
+          letters = letters,
+          type = "letter",
           stringsAsFactors = FALSE
         )
         
-        y_max_df <- sub_df %>%
-          dplyr::group_by(.data[[group_var]]) %>%
+        x_rng  <- range(df_sub[[varname1]], na.rm = TRUE)
+        x_span <- diff(x_rng)
+        if (x_span == 0) x_span <- 1
+        
+        x_max_by_group <- df_sub %>%
+          dplyr::group_by(.data[[varname2]]) %>%
           dplyr::summarise(
-            y_max = max(GS_best_lag, na.rm = TRUE),
+            x_max = max(.data[[varname1]], na.rm = TRUE),
             .groups = "drop"
           ) %>%
-          dplyr::rename(group = !!group_var)
+          dplyr::rename(group = !!varname2)
         
-        letter_df <- dplyr::left_join(letter_df, y_max_df, by = "group") %>%
-          dplyr::mutate(
-            source_sink = ss,
-            x = group,
-            y = y_max + letter_offset_frac * y_span
-          )
+        letter_df <- dplyr::left_join(letter_df, x_max_by_group, by = "group") %>%
+          dplyr::mutate(x = x_max + letter_offset_frac * x_span)
         
-        letter_list[[length(letter_list) + 1]] <- letter_df
+        ann_ls[[length(ann_ls) + 1]] <- letter_df
       }
     }
   }
   
-  if (length(p_list) > 0) {
-    p_df <- dplyr::bind_rows(p_list)
-    g <- g +
-      geom_text(
-        data = p_df,
-        aes(x = x, y = y, label = label),
-        inherit.aes = FALSE,
-        hjust = 0,
-        size = 4
-      )
-  }
-  
-  if (length(letter_list) > 0) {
-    letter_df <- dplyr::bind_rows(letter_list)
-    g <- g +
-      geom_text(
-        data = letter_df,
-        aes(x = x, y = y, label = label),
-        inherit.aes = FALSE,
-        vjust = 0,
-        size = 4
-      )
+  if (length(ann_ls) > 0) {
+    ann_df <- dplyr::bind_rows(ann_ls)
+    
+    if (any(ann_df$type == "p")) {
+      p_df <- ann_df %>% dplyr::filter(type == "p")
+      
+      if (box_violin == "Box") {
+        g <- g +
+          geom_text(
+            data = p_df,
+            aes(x = Inf, y = -Inf, label = label),
+            inherit.aes = FALSE,
+            hjust = 1.1, vjust = -0.8, size = 4.5
+          )
+      } else {
+        g <- g +
+          geom_text(
+            data = p_df,
+            aes(y = Inf, x = -Inf, label = label),
+            inherit.aes = FALSE,
+            hjust = 1.1, vjust = -0.8, size = 4.5
+          )
+      }
+    }
+    
+    if (any(ann_df$type == "letter")) {
+      letter_df <- ann_df %>% dplyr::filter(type == "letter")
+      
+      if (box_violin == "Box") {
+        g <- g +
+          geom_text(
+            data = letter_df,
+            aes(x = x, y = group, label = letters),
+            inherit.aes = FALSE,
+            hjust = 0,
+            size = 4
+          )
+      } else {
+        g <- g +
+          geom_text(
+            data = letter_df,
+            aes(y = x, x = group, label = letters),
+            inherit.aes = FALSE,
+            vjust = 0,
+            size = 4
+          )
+      }
+    }
   }
   
   return(g)

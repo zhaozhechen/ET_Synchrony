@@ -337,23 +337,6 @@ print_g(g_box,paste0("Box_",res_name),3,4)
 
 #plot_pdf(syc_df,res_name,"source_sink",pair_color,1,"test")
 
-
-# Make plot including both lag and peak TE =========================
-g_lag_TE_AI <- plot_TE_vs_lag("AI_Class")
-g_lag_TE_climate <- plot_TE_vs_lag("Koppen_aggregate")+
-  guides(size = "none")
-g_lag_TE_IGBP <- plot_TE_vs_lag("IGBP_aggregate")+
-  guides(size = "none")
-g_lag_TE_soil <- plot_TE_vs_lag("Soil_Group")+
-  guides(size = "none")
-
-# Combine these plots
-g_lag_TE <- plot_grid(g_lag_TE_AI,g_lag_TE_climate,g_lag_TE_IGBP,g_lag_TE_soil,
-                      ncol=1,align="hv")
-
-print_g(g_lag_TE,paste0("Lag_TE_plot_v2"),8,16)
-
-
 syc_df %>%
   group_by(source_sink) %>%
   summarize(mean = mean(GS_best_lag,na.rm=TRUE),
