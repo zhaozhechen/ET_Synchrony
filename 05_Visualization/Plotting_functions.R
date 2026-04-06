@@ -14,6 +14,7 @@ library(tidyterra)
 library(ggnewscale)
 library(ggbreak)
 library(patchwork)
+library(terra)
 
 # Make CONUS boundary
 # Whole US map
@@ -178,6 +179,92 @@ TS_annual <- function(varname,df,y_title,my_color){
     theme(legend.position = c(0.5,0.9),
           legend.background = element_blank(),
           legend.direction = "horizontal")
+  return(g)
+}
+
+# This version of TS_annual use points instead of lines. And use one color for the plot
+TS_annual_v2 <- function(varname, df, y_title, my_color) {
+  # ----------------------------
+  # Summarize annual cycle
+  # ----------------------------
+  df_tmp <- df %>%
+    mutate(
+      DOY = yday(Time)
+    ) %>%
+    group_by(DOY) %>%
+    summarise(
+      Time = as.Date(format(first(Time), "2020-%m-%d")),
+      mean = mean(.data[[varname]], na.rm = TRUE),
+      sd   = sd(.data[[varname]], na.rm = TRUE),
+      GS   = first(GS),
+      .groups = "drop"
+    ) %>%
+    arrange(Time) %>%
+    mutate(group_id = data.table::rleid(GS))
+  
+  # ----------------------------
+  # Find GS boundaries
+  # ----------------------------
+  gs_idx <- which(df_tmp$GS == "GS")
+  gs_start <- min(df_tmp$Time[gs_idx], na.rm = TRUE)
+  gs_end   <- max(df_tmp$Time[gs_idx], na.rm = TRUE)
+  
+  # Midpoints for text labels
+  x_min <- min(df_tmp$Time, na.rm = TRUE)
+  x_max <- max(df_tmp$Time, na.rm = TRUE)
+  
+  x_left  <- x_min + (gs_start - x_min) / 2
+  x_mid   <- gs_start + (gs_end - gs_start) / 2
+  x_right <- gs_end + (x_max - gs_end) / 2
+  
+  # Y position for top labels
+  y_top <- max(df_tmp$mean + df_tmp$sd, na.rm = TRUE)
+  y_text <- y_top + 0.03 * diff(range(df_tmp$mean + df_tmp$sd, na.rm = TRUE))
+  
+  # ----------------------------
+  # Plot
+  # ----------------------------
+  g <- ggplot(df_tmp, aes(x = Time, y = mean, group = group_id)) +
+    geom_ribbon(
+      aes(ymin = mean - sd, ymax = mean + sd),
+      fill = my_color,color = NA,alpha = 0.25
+    ) +
+    geom_line(color = my_color,linewidth = 1) +
+    geom_vline(xintercept = c(gs_start, gs_end),
+      linetype = "dashed",color = "grey40") +
+    annotate(
+      "text",
+      x = x_left,
+      y = y_text,
+      label = "Dormant",
+      vjust = 0,
+      size = 4
+    ) +
+    annotate(
+      "text",
+      x = x_mid,
+      y = y_text,
+      label = "Growing season",
+      vjust = 0,
+      size = 4
+    ) +
+    annotate(
+      "text",
+      x = x_right,
+      y = y_text,
+      label = "Dormant",
+      vjust = 0,
+      size = 4
+    ) +
+    my_theme +
+    labs(x = "", y = y_title) +
+    scale_x_date(date_breaks = "2 month", date_labels = "%b") +
+    coord_cartesian(clip = "off") +
+    theme(
+      legend.position = "none",
+      plot.margin = margin(10, 10, 20, 10)
+    )
+  
   return(g)
 }
 

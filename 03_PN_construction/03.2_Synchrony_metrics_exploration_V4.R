@@ -131,6 +131,9 @@ syc_df <- rbind(syc_df1,syc_df2,syc_df3,syc_df4,syc_df5,syc_df6) %>%
   ),
   Soil_Group = factor(Soil_Group,levels=c("Fine","Moderately fine","Medium","Moderately coarse","Coarse")))
 
+# Output this df
+write.csv(syc_df,paste0(Output_path,"syc_df.csv"))
+
 # Make plot including both lag and peak TE =========================
 g_lag_TE_AI <- plot_TE_vs_lag("AI_Class")
 g_lag_TE_climate <- plot_TE_vs_lag("Koppen_aggregate")+
