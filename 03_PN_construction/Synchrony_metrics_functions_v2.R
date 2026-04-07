@@ -367,24 +367,25 @@ get_target_syc_metric <- function(Site_ls,var_comb,Syc_metrics_path,season,targe
 
 # This is a wrapper function to make chord diagrams by group
 make_group_chord_diagram <- function(
-    group_col, # Column name in Site_info to group by
-    title, # Title of the file
-    Site_info, # Site info df
-    var_comb, # source-sink pairs
-    Syc_metrics_path, # Path to syc metrics df
-    season = "GS", # GS, NGS, FT
-    target_syc_metric_name, # Target syc metric name, e.g., daily_p_TE
-    Output_path, # Figure output path
-    cols, # Named colors for nodes
-    var_order = c("ET","psi","VPD","TA"), # node order for chord diagram
-    panel_w = 5, # Panel size
-    panel_h = 5, # Panel size
-    ncol_fixed = NULL, # Optional fixed number of columns
-    min_pairs = 6, # Skip groups with < this many rows in plot_df
-    label_cex = 2.2 # Panel title size
+    group_col,
+    title,
+    Site_info,
+    var_comb,
+    Syc_metrics_path,
+    season = "GS",
+    target_syc_metric_name,
+    Output_path,
+    cols,
+    var_order = c("ET","psi","VPD","TA"),
+    panel_w = 5,
+    panel_h = 5,
+    ncol_fixed = NULL,
+    min_pairs = 6,
+    label_cex = 2.2,
+    sector_label_cex = 3
 ){
   groups <- sort(unique(na.omit(Site_info[[group_col]])))
-  # Build plot data per group
+  
   plots <- lapply(groups, function(g) {
     Site_ls <- Site_info$site_id[Site_info[[group_col]] == g]
     if (length(Site_ls) == 0) return(NULL)
@@ -399,7 +400,7 @@ make_group_chord_diagram <- function(
     if (is.null(df) || nrow(df) < min_pairs) return(NULL)
     list(group = as.character(g), df = df)
   })
-  # drop empty df
+  
   plots <- Filter(Negate(is.null), plots)
   k <- length(plots)
   if (k == 0) stop("No groups with complete synchrony metrics for output.")
@@ -409,43 +410,59 @@ make_group_chord_diagram <- function(
   W <- ncol * panel_w
   H <- nrow * panel_h
   
-  pdf_path <- file.path(Output_path, paste0(title,"-",season,"-",target_syc_metric_name,".pdf"))
-  png_path <- file.path(Output_path, paste0(title,"-",season,"-",target_syc_metric_name,".png"))
+  pdf_path <- file.path(Output_path, paste0(title, "-", season, "-", target_syc_metric_name, ".pdf"))
+  png_path <- file.path(Output_path, paste0(title, "-", season, "-", target_syc_metric_name, ".png"))
   
-  # --- Combined PDF (Unicode-safe) ---
+  # --- Combined PDF ---
   grDevices::cairo_pdf(pdf_path, width = W, height = H, family = "sans")
   op <- par(no.readonly = TRUE)
   on.exit(try(par(op), silent = TRUE), add = TRUE)
   
-  par(mfrow = c(nrow, ncol),
-      mar = c(0, 0, 3, 0),  # small top margin to fit group label
-      oma = c(2, 2, 2, 2),
-      xaxs = "i", yaxs = "i")
+  par(
+    mfrow = c(nrow, ncol),
+    mar = c(0, 0, 3, 0),
+    oma = c(2, 2, 2, 2),
+    xaxs = "i", yaxs = "i",
+    cex = 1
+  )
   
   for (i in seq_len(k)) {
-    plot_chord_diagram(plots[[i]]$df, cols = cols, var_order = var_order)
+    plot_chord_diagram(
+      plots[[i]]$df,
+      cols = cols,
+      var_order = var_order,
+      sector_label_cex = sector_label_cex
+    )
     mtext(plots[[i]]$group, side = 3, line = -0.3, adj = 0.1,
           cex = label_cex, font = 2)
   }
   if (k < nrow * ncol) for (j in seq_len(nrow * ncol - k)) plot.new()
   grDevices::dev.off()
   
-  # --- Combined PNG (same geometry) ---
+  # --- Combined PNG ---
   png(filename = png_path,
       units = "in", width = W, height = H, res = 600, type = "cairo")
-  par(mfrow = c(nrow, ncol),
-      mar = c(0, 0, 3, 0),
-      oma = c(2, 2, 2, 2),
-      xaxs = "i", yaxs = "i")
+  
+  par(
+    mfrow = c(nrow, ncol),
+    mar = c(0, 0, 3, 0),
+    oma = c(2, 2, 2, 2),
+    xaxs = "i", yaxs = "i",
+    cex = 1
+  )
   
   for (i in seq_len(k)) {
-    plot_chord_diagram(plots[[i]]$df, cols = cols, var_order = var_order)
+    plot_chord_diagram(
+      plots[[i]]$df,
+      cols = cols,
+      var_order = var_order,
+      sector_label_cex = sector_label_cex
+    )
     mtext(plots[[i]]$group, side = 3, line = -0.3, adj = 0.1,
           cex = label_cex, font = 2)
   }
   if (k < nrow * ncol) for (j in seq_len(nrow * ncol - k)) plot.new()
   grDevices::dev.off()
-  
 }
 
 # This function is to read synchrony metric df

@@ -1688,30 +1688,40 @@ plot_delta_heatmaps <- function(results_delta_all, fill_name,season,palette_name
 # plot_df: df of sychrony metrics between pairs, for both directions. Should have 4 columns
 # cols. Colors of the bands
 # var_order: order of variables
-plot_chord_diagram <- function(plot_df,cols,var_order){
+# var_order: order of variables
+plot_chord_diagram <- function(plot_df, cols, var_order,
+                               sector_label_cex = 3,
+                               sector_labels = c(
+                                 ET = "ET",
+                                 VPD = "VPD",
+                                 TA = "Tair",
+                                 psi = "psi"
+                               )) {
   # Ribbon color = whichever direction is stronger for that pair
   ribbon_cols <- ifelse(
     plot_df$value_direct1 >= plot_df$value_direct2,
     cols[as.character(plot_df$from)],   # color by 'from'
     cols[as.character(plot_df$to)]      # color by 'to'
-  )  
+  )
   
   # save/restore ONLY what we change (do NOT capture mfrow)
-  old_par <- par(c("mar","xaxs","yaxs"))
+  old_par <- par(c("mar", "xaxs", "yaxs"))
   on.exit(par(old_par), add = TRUE)
-  par(mar = c(2,2,2,2), xaxs = "i", yaxs = "i")
+  par(mar = c(2, 2, 2, 2), xaxs = "i", yaxs = "i")
   
   circos.clear()
-  circos.par(start.degree = 90, 
-             gap.after = rep(4, length(unique(c(plot_df$from,plot_df$to)))),
-             track.height = 0.05,
-             cell.padding = c(0,0,0,0),
-             canvas.xlim = c(-1.2,1.2),
-             canvas.ylim = c(-1.2,1.2),
-             points.overflow.warning = FALSE)
+  circos.par(
+    start.degree = 90,
+    gap.after = rep(4, length(unique(c(plot_df$from, plot_df$to)))),
+    track.height = 0.05,
+    cell.padding = c(0, 0, 0, 0),
+    canvas.xlim = c(-1.2, 1.2),
+    canvas.ylim = c(-1.2, 1.2),
+    points.overflow.warning = FALSE
+  )
   
   chordDiagram(
-    x = plot_df[,1:4],
+    x = plot_df[, 1:4],
     order = var_order,
     grid.col = cols,
     col = ribbon_cols,
@@ -1730,18 +1740,21 @@ plot_chord_diagram <- function(plot_df,cols,var_order){
     ylim   <- get.cell.meta.data("ylim")
     
     # smaller ticks
-    circos.axis(h = "top", labels = FALSE, 
-                major.tick.length = convert_y(1.5, "mm"),
-                minor.ticks = 0)
+    circos.axis(
+      h = "top",
+      labels = FALSE,
+      major.tick.length = convert_y(1.5, "mm"),
+      minor.ticks = 0
+    )
     
-    # bigger labels; psi as expression
-    lab_map <- list(ET = "ΔET", 
-                    VPD = "ΔVPD", 
-                    TA = "ΔT", 
-                    psi = "Δψ")
-    
-    circos.text(mean(xlim), ylim[1] + 160, labels = lab_map[[sector]],
-                facing = "bending", niceFacing = TRUE, adj = c(0.5, 0.5), cex = 3)
+    circos.text(
+      mean(xlim), ylim[1] + 160,
+      labels = sector_labels[[sector]],
+      facing = "bending",
+      niceFacing = TRUE,
+      adj = c(0.5, 0.5),
+      cex = sector_label_cex
+    )
   })
 }
 

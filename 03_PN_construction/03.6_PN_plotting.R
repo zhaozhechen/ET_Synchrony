@@ -107,7 +107,8 @@ make_group_chord_diagram(group_col = "CONUS",
                          Output_path = Output_path,
                          cols = cols,
                          ncol_fixed = 1,
-                         var_order = c("ET","psi","VPD","TA"))
+                         var_order = c("ET","psi","VPD","TA"),
+                         sector_label_cex = 2)
 
 # Group the sites by IGBP vegetation type =======================
 make_group_chord_diagram(group_col = "IGBP_aggregate",
