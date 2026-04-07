@@ -237,15 +237,15 @@ TS_annual_v2 <- function(varname, df, y_title, my_color) {
       x = x_left,
       y = y_text,
       label = "Dormant",
-      vjust = 0,
+      vjust = 1,
       size = 4
     ) +
     annotate(
       "text",
       x = x_mid,
       y = y_text,
-      label = "Growing season",
-      vjust = 0,
+      label = "Growing",
+      vjust = 1,
       size = 4
     ) +
     annotate(
@@ -253,7 +253,7 @@ TS_annual_v2 <- function(varname, df, y_title, my_color) {
       x = x_right,
       y = y_text,
       label = "Dormant",
-      vjust = 0,
+      vjust = 1,
       size = 4
     ) +
     my_theme +
