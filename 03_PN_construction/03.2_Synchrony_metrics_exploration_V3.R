@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Date: 2026.3.21
+# Date: 2026.5.1
 
 # This code is to analyze Delta (TE(driver->ET) - TE(ET->driver))
 
@@ -16,7 +16,7 @@ library(terra)
 Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
 
 # Updated site info
-Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
+Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS_LAI_filtered.csv")
 
 # Predictor df
 predictor_df <- read.csv("00_Data/perdictor_df_updated.csv")
@@ -143,7 +143,7 @@ for(i in 1:nrow(source_sink_pair)){
                                                  "CSH","OSH","  ",
                                                  "WSA","SAV","GRA","   ",
                                                  "CRO","CVM"))) %>%
-    left_join(Site_info %>%
+    inner_join(Site_info %>%
                 select(site_ID = site_id,Soil_Type = Description),by="site_ID") %>%
     mutate(Soil_Type = factor(Soil_Type,levels=rev(c("Sand","Loamy sand",
                                                      "    ","Sandy loam",
@@ -302,24 +302,30 @@ for(i in 1:nrow(source_sink_pair)){
 
 # Combine continuous Delta maps
 g_continuous_map <- plot_grid(plotlist = g_continuous_ls,ncol=2,align="hv",labels = "auto")
-print_g(g_continuous_map,paste0("Delta_maps_AI_",res_name),14,10)
+#print_g(g_continuous_map,paste0("Delta_maps_AI_",res_name),14,10)
+print_g(g_continuous_map,paste0("Delta_maps_AI_",res_name,"_LAI_filtered"),14,10)
+
 # Combine continuous maps, and categorical maps
 g_regimes <- plot_grid(plotlist = g_map_all_ls,ncol=2,labels="auto")
-print_g(g_regimes,paste0("Delta_regimes_",res_name),14,15)
+#print_g(g_regimes,paste0("Delta_regimes_",res_name),14,15)
+print_g(g_regimes,paste0("Delta_regimes_",res_name,"_LAI_filtered"),14,15)
+
 # Combine TEtotal vs Delta scatter plots
 g_TE_Delta <- plot_grid(plotlist = g_TE_Delta_ls,ncol = 1,align="hv")
-print_g(g_TE_Delta,paste0("TEtotal_Delta_scatter_",res_name),4,12)
+#print_g(g_TE_Delta,paste0("TEtotal_Delta_scatter_",res_name),4,12)
+print_g(g_TE_Delta,paste0("TEtotal_Delta_scatter_",res_name,"_LAI_filtered"),4,12)
   
 # Combine boxplots (Main text)
 g_scatter_box <- plot_grid(plotlist = g_scatter_box_ls[c(1,5,9,2,6,10,3,7,11,4,8,12)],
                            ncol=3,align="hv",labels="auto")
-print_g(g_scatter_box,"Delta_compare_cli_veg_soil",16,9)
+#print_g(g_scatter_box,"Delta_compare_cli_veg_soil",16,9)
+print_g(g_scatter_box,"Delta_compare_cli_veg_soil_LAI_filtered",16,9)
 
 # Combine all scatter and box plots (SI figure)
 g_scatter_box_SI <- plot_grid(plotlist = g_scatter_box_SI_ls[c(1,5,9,2,6,10,3,7,11,4,8,12)],
                               ncol=3,align="hv",labels = "auto")
-print_g(g_scatter_box_SI,"Delta_compare_cli_veg_soil_SI",16,14)
-
+#print_g(g_scatter_box_SI,"Delta_compare_cli_veg_soil_SI",16,14)
+print_g(g_scatter_box_SI,"Delta_compare_cli_veg_soil_SI_LAI_filtered",16,14)
 
 
 # Compare synchrony metrics across pairs =============
@@ -330,7 +336,7 @@ my_comparisons <- list(
   c("VPD_ET", "TA_ET")
 )
 
-# Process syc_df_tmp to make sure each site has three Delta values
+# Process syc_df_tmp to make sure each site has all three Delta values
 syc_df_tmp_paired <- Delta_df %>%
   select(site_ID,source_sink,value = Delta) %>%
   # Convert to long data to force matching
@@ -370,9 +376,11 @@ g_box_pair <- ggplot(data = syc_df_tmp_paired,aes(x=source_sink,y=value,fill=sou
   # Set the top of the figure to make some room
   scale_y_continuous(expand = expansion(mult = c(0.05,0.15)))
 
-print_g(g_box_pair,paste0("Delta_box_",res_name),4,3)
+#print_g(g_box_pair,paste0("Delta_box_",res_name),4,3)
+print_g(g_box_pair,paste0("Delta_box_",res_name,"_LAI_filtered"),4,3)
 
 
-
-
+summary(syc_df_tmp_paired$value[syc_df_tmp_paired$source_sink == "psi_ET"])
+summary(syc_df_tmp_paired$value[syc_df_tmp_paired$source_sink == "VPD_ET"])
+summary(syc_df_tmp_paired$value[syc_df_tmp_paired$source_sink == "TA_ET"])
 
