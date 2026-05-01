@@ -1,14 +1,17 @@
 # Author: Zhaozhe Chen (zhaozhe.chen@wisc.edu)
+# Date: 2026.5.1
 # This code is to make summary plots of input variables
 
-
 # ------- Global --------------
+library(rstatix)
+library(multcompView)
+
 source("01_Data_processing/AMF_processing_functions.R")
 source("05_Visualization/Plotting_functions.R")
 # Input path for hourly AMF data
 AMF_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Data/02_AMF_cleaned/AMF_Hourly/AMF_sites_hourly_update/"
 # Input path to AMF site info, which also includes soil info
-site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
+site_info <- read.csv("00_Data/ameriflux_site_info_update_GS_LAI_filtered.csv")
 # Predictor df, with updated AI_gridded
 predictor_df <- read.csv("00_Data/perdictor_df_updated.csv")
 # Aridity index map
@@ -60,7 +63,8 @@ g_map_H_TA <- syc_map(df = H_df,varname = "H_TA",colors = map_color,legend_title
                       g_title = "TA",color_limits = c(0,3),end_marks = "0",base_raster = AI_raster)
 # Combine these four maps
 g_map_H <- plot_grid(g_map_H_ET,g_map_H_psi,g_map_H_VPD,g_map_H_TA,nrow=2,align="hv",labels="auto")
-print_g(g_map_H,"H_maps",14,10)
+#print_g(g_map_H,"H_maps",14,10)
+print_g(g_map_H,"H_maps_LAI_filtered",14,10)
 
 # Box plots of Shannon entropy across four variables ---------
 H_df_long <- H_df %>%
@@ -95,7 +99,47 @@ g_box_H <- ggplot(data = H_df_long,aes(x=Variable,y=H,fill=Variable,
     "H_TA"  = expression(T[air])
   ))
 
-print_g(g_box_H,"H_comparison",4,3)
+#print_g(g_box_H,"H_comparison",4,3)
+print_g(g_box_H,"H_comparison_LAI_filtered",4,3)
+
+# Get statistics ---------------
+summary(H_df$H_psi)
+summary(H_df$H_TA)
+summary(H_df$H_VPD)
+summary(H_df$H_ET)
+
+# Pairwise Wilcoxon tests
+H_long <- H_df %>%
+  select(H_psi, H_TA, H_VPD, H_ET) %>%
+  mutate(site_id = row_number()) %>% 
+  pivot_longer(
+    cols = c(H_psi, H_TA, H_VPD, H_ET),
+    names_to = "variable",
+    values_to = "H"
+  )
+
+# Proper paired test
+pairwise_res <- H_long %>%
+  pairwise_wilcox_test(
+    H ~ variable,
+    paired = TRUE,
+    id = "site_id", 
+    p.adjust.method = "BH"
+  )
+
+pairwise_res
+
+pvals <- pairwise_res$p.adj
+names(pvals) <- paste(pairwise_res$group1, pairwise_res$group2, sep = "-")
+
+letters <- multcompLetters(pvals, threshold = 0.05)$Letters
+
+letters_df <- data.frame(
+  variable = names(letters),
+  letter = letters
+)
+
+letters_df
 
 # Make TS plots for input variables --------------
 # Initialize a list

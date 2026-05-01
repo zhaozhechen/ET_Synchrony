@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Update Date: 2026.3.31
+# Update Date: 2026.5.1
 
 # This code is to explore synchrony strength among pairs
 
@@ -16,7 +16,7 @@ library(terra)
 Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
 
 # Updated site info
-Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
+Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS_LAI_filtered.csv")
 
 # Predictor df, with updated AI_gridded
 predictor_df <- read.csv("00_Data/perdictor_df_updated.csv")
@@ -32,7 +32,7 @@ source("05_Visualization/Plotting_functions.R")
 source("03_PN_construction/Synchrony_metrics_functions_v2.R")
 
 # Output path of figures
-Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_V5/"
+Output_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Source-sink_pair-comparisons_V3/"
 
 season <- "GS"
 
@@ -116,7 +116,7 @@ syc_df <- rbind(syc_df1,syc_df2,syc_df3,syc_df4,syc_df5,syc_df6) %>%
                                                "CSH","OSH","  ",
                                                "WSA","SAV","GRA","   ",
                                                "CRO","CVM"))) %>%
-  left_join(Site_info %>%
+  right_join(Site_info %>%
               select(site_ID = site_id,Soil_Type = Description),by="site_ID") %>%
   mutate(Soil_Type = factor(Soil_Type,levels=rev(c("Sand","Loamy sand",
                                                    "    ","Sandy loam",
@@ -217,19 +217,25 @@ for(i in 1:nrow(sc_pairs)){
 
 # Combine 3 maps for three pairs
 g_map <- plot_grid(plotlist = g_map_ls,nrow=2,align="hv",labels="auto")
-print_g(g_map,paste0("Syc_maps_AI_",res_name),14,7)
+#print_g(g_map,paste0("Syc_maps_AI_",res_name),14,7)
+print_g(g_map,paste0("Syc_maps_AI_",res_name,"_LAI_filtered"),14,7)
 
 # Combine all scatter and box plots (main text)
 g_scatter_box <- plot_grid(plotlist = g_scatter_box_ls[c(1,5,9,2,6,10,3,7,11,4,8,12)],
                            ncol=3,align="hv",labels="auto")
-print_g(g_scatter_box,paste0("Syc_compare_cli_veg_soil_",res_name),16,9)
+#print_g(g_scatter_box,paste0("Syc_compare_cli_veg_soil_",res_name),16,9)
+print_g(g_scatter_box,paste0("Syc_compare_cli_veg_soil_",res_name,"_LAI_filtered"),16,9)
 
 # Combine all scatter and box plots (SI figure)
 g_scatter_box_SI <- plot_grid(plotlist = g_scatter_box_SI_ls[c(1,5,9,2,6,10,3,7,11,4,8,12)],
                               ncol=3,align="hv",labels = "auto")
-print_g(g_scatter_box_SI,paste0("Syc_compare_cli_veg_soil_SI_",res_name),16,14)
+#print_g(g_scatter_box_SI,paste0("Syc_compare_cli_veg_soil_SI_",res_name),16,14)
+print_g(g_scatter_box_SI,paste0("Syc_compare_cli_veg_soil_SI_",res_name,"LAI_filtered"),16,14)
 
-
+# Statistics =============
+summary(syc_df$GS_daily_p_TE[syc_df$source_sink == "VPD_ET"])
+summary(syc_df$GS_daily_p_TE[syc_df$source_sink == "psi_ET"])
+summary(syc_df$GS_daily_p_TE[syc_df$source_sink == "TA_ET"])
 
 
 # Compare synchrony metrics across pairs (for ET as endpoint) ==========
