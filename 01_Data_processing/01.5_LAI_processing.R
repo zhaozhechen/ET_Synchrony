@@ -161,31 +161,31 @@ site_info$SOS <- SOS_ls
 site_info$EOS <- EOS_ls
 
 # Manually add SOS, EOS for sites having no sufficient LAI data =========================
-# US-CS5. Central Sands (WI). Use the mean of US-CS1, US-CS2, US-CS3, and US-CS4
+# US-CS5. Central Sands (WI). Use the mean of US-CS1, US-CS2, and US-CS4, all Cropland
 site_info <- replace_dates(site_info,"US-CS5",
-                           c("US-CS1","US-CS2","US-CS3","US-CS4"))
+                           c("US-CS1","US-CS2","US-CS4"))
 
-# US-Snf, UC-Berkeley (CA), next to Sne
+# US-Snf, UC-Berkeley (CA), next to Sne # Both grassland
 site_info <- replace_dates(site_info,"US-Snf",
                            c("US-Sne"))
 
-# US-UTB, UFLUX Bonneville Salt Flats (UT), next to US-xNQ
+# US-UTB, UFLUX Bonneville Salt Flats (UT) (Barren Sparse Vegetation), next to US-xNQ (OSH)
 site_info <- replace_dates(site_info,"US-UTB",
                            c("US-xNQ"))
 
-# US-Wi0 (WI), next to Wi1,Wi3,Wi4,Wi6
+# US-Wi0 (WI) (ENF), next to Wi1 (DBF),Wi3 (DBF),Wi4 (DNF),Wi6 (OSH)
 site_info <- replace_dates(site_info,"US-Wi0",
                            c("US-Wi1","US-Wi3","US-Wi4","US-Wi6"))
 
-# US-Wi5
+# US-Wi5 (ENF)
 site_info <- replace_dates(site_info,"US-Wi5",
                            c("US-Wi1","US-Wi3","US-Wi4","US-Wi6"))
 
-# US-Wi7
+# US-Wi7 (OSH)
 site_info <- replace_dates(site_info,"US-Wi7",
                            c("US-Wi1","US-Wi3","US-Wi4","US-Wi6"))
 
-# US-Wi8
+# US-Wi8 (DBF)
 site_info <- replace_dates(site_info,"US-Wi8",
                            c("US-Wi1","US-Wi3","US-Wi4","US-Wi6"))
 
@@ -195,8 +195,12 @@ site_info$LGS <- as.numeric(as.Date(site_info$EOS) - as.Date(site_info$SOS))
 # Output this updated site_info
 write.csv(site_info,"00_Data/ameriflux_site_info_update_GS.csv")
 
+site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 
-
+# Remove sites with LAI < 1 year
+site_info <- site_info %>%
+  filter(!site_id %in% c("US-CS5","US-Snf","US-UTB","US-Wi0","US-Wi5","US-Wi7","US-Wi8"))
+write.csv(site_info,"00_Data/ameriflux_site_info_update_GS_LAI_filtered.csv")
 
 
 

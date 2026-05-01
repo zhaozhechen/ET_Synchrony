@@ -99,6 +99,8 @@ Site_info <- predictor_df %>%
 # Across CONUS ==============
 make_group_chord_diagram(group_col = "CONUS",
                          title = "CONUS",
+                         panel_w = 4,
+                         panel_h = 4,
                          Site_info = Site_info,
                          var_comb = var_comb,
                          Syc_metrics_path = Syc_metrics_path,
@@ -108,7 +110,7 @@ make_group_chord_diagram(group_col = "CONUS",
                          cols = cols,
                          ncol_fixed = 1,
                          var_order = c("ET","psi","VPD","TA"),
-                         sector_label_cex = 2)
+                         sector_label_cex = 1.5)
 
 # Group the sites by IGBP vegetation type =======================
 make_group_chord_diagram(group_col = "IGBP_aggregate",
@@ -157,6 +159,7 @@ make_group_chord_diagram(group_col = "AI_Class",
                          target_syc_metric_name = target_syc_metric_name,
                          Output_path = Output_path,
                          cols = cols,
+                         ncol_fixed = 4,
                          var_order = c("ET","psi","VPD","TA"))
 
 # For each site =====================
@@ -171,6 +174,7 @@ make_group_chord_diagram(group_col = "site_id",
                          target_syc_metric_name = target_syc_metric_name,
                          Output_path = Output_path,
                          cols = cols,
-                         var_order = c("ET","psi","VPD","TA"))
+                         var_order = c("ET","psi","VPD","TA"),
+                         sector_label_cex = 2)
 
 

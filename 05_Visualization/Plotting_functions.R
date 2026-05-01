@@ -1695,7 +1695,7 @@ plot_chord_diagram <- function(plot_df, cols, var_order,
                                  ET = "ET",
                                  VPD = "VPD",
                                  TA = "Tair",
-                                 psi = "psi"
+                                 psi = "ψ"
                                )) {
   # Ribbon color = whichever direction is stronger for that pair
   ribbon_cols <- ifelse(
