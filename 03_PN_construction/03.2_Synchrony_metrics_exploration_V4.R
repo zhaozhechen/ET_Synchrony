@@ -15,6 +15,9 @@ library(terra)
 # Input path for Synchrony metrics for 12 pairs
 Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
 
+# Input path for TE_df
+TE_df_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/TE_df/"
+
 # Updated site info
 Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS_LAI_filtered.csv")
 
@@ -173,9 +176,8 @@ lags_ET_psi_east <- syc_df$GS_best_lag[
     !syc_df$Division %in% c("Pacific","Mountain","West South Central","West North Central")
 ]
 
-# VPD -> ET
-# Find long lag outliers
-syc_df[syc_df$source_sink == "TA_ET" & syc_df$GS_best_lag > 5, ]
+
+
 
 # Make plot including both lag and peak TE =========================
 g_lag_TE_AI <- plot_TE_vs_lag("AI_Class")
