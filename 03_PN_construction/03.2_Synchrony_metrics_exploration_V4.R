@@ -1,5 +1,5 @@
 # Author: Zhaozhe Chen
-# Update Date: 2026.3.31
+# Update Date: 2026.5.4
 
 # This code is to explore lag among pairs
 
@@ -16,7 +16,7 @@ library(terra)
 Syc_metrics_path <- "D:/OneDrive - UW-Madison/Research/ET Synchrony/Results/Hourly_TE_all_sites_server/Results/Syc_metrics_12pairs/"
 
 # Updated site info
-Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
+Site_info <- read.csv("00_Data/ameriflux_site_info_update_GS_LAI_filtered.csv")
 
 # Predictor df, with updated AI_gridded
 predictor_df <- read.csv("00_Data/perdictor_df_updated.csv")
@@ -113,7 +113,7 @@ syc_df <- rbind(syc_df1,syc_df2,syc_df3,syc_df4,syc_df5,syc_df6) %>%
                                                "CSH","OSH","  ",
                                                "WSA","SAV","GRA","   ",
                                                "CRO","CVM"))) %>%
-  left_join(Site_info %>%
+  inner_join(Site_info %>%
               select(site_ID = site_id,Soil_Type = Description),by="site_ID") %>%
   mutate(Soil_Type = factor(Soil_Type,levels=rev(c("Sand","Loamy sand",
                                                    "    ","Sandy loam",
@@ -134,6 +134,23 @@ syc_df <- rbind(syc_df1,syc_df2,syc_df3,syc_df4,syc_df5,syc_df6) %>%
 # Output this df
 write.csv(syc_df,paste0(Output_path,"syc_df.csv"))
 
+# Statistics =============================
+syc_df %>%
+  group_by(source_sink) %>%
+  summarise(
+    n = sum(!is.na(GS_best_lag)),
+    min = min(GS_best_lag, na.rm = TRUE),
+    max = max(GS_best_lag, na.rm = TRUE),
+    mean = mean(GS_best_lag, na.rm = TRUE),
+    median = median(GS_best_lag, na.rm = TRUE),
+    sd = sd(GS_best_lag, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+
+
+
 # Make plot including both lag and peak TE =========================
 g_lag_TE_AI <- plot_TE_vs_lag("AI_Class")
 g_lag_TE_climate <- plot_TE_vs_lag("Koppen_aggregate")+
@@ -147,24 +164,25 @@ g_lag_TE_soil <- plot_TE_vs_lag("Soil_Group")+
 g_lag_TE <- plot_grid(g_lag_TE_AI,g_lag_TE_climate,g_lag_TE_IGBP,g_lag_TE_soil,
                       ncol=1,align="hv")
 
-print_g(g_lag_TE,paste0("Lag_TE_plot_v2"),8,16)
+#print_g(g_lag_TE,paste0("Lag_TE_plot_v2"),8,16)
+print_g(g_lag_TE,paste0("Lag_TE_plot_v2_LAI_filtered"),8,16)
 
 # Distributions of lag time across 6 pairs ===============
-g_box <- ggplot(data = syc_df,aes(x=source_sink,y=.data[[res_name]],fill=source_sink))+
+g_box <- ggplot(data = syc_df,aes(y=source_sink,x=.data[[res_name]],fill=source_sink))+
   geom_boxplot(outlier.color = "grey")+
   my_theme+
-  labs(y = res_title,x="")+
+  labs(x = res_title,y="")+
   scale_fill_manual(values = pair_color)+
-  scale_x_discrete(labels = c(
+  scale_y_discrete(labels = c(
     psi_ET = expression(psi %->% ET),
     ET_psi = expression(ET %->% psi),
     VPD_ET = expression(VPD %->% ET),
     ET_VPD = expression(ET %->% VPD),
     TA_ET  = expression(T[air] %->% ET),
     ET_TA  = expression(ET %->% T[air])
-  ))+
-  theme(axis.text.x = element_text(angle=45,hjust=1,vjust=1))
-print_g(g_box,paste0("Box_",res_name),3,4)
+  ))
+print_g(g_box,paste0("Box_",res_name,"_LAI_filtered"),6,3)
+
 
 # Maps of lag across pairs =====================
 # A list of source-sink pairs to plot
@@ -242,9 +260,8 @@ g_map <- plot_grid(
   labels = "auto"
 )
 
-print_g(g_map, paste0("Lag_maps_", res_name), 21, 7)
-
-
+#print_g(g_map, paste0("Lag_maps_", res_name), 21, 7)
+print_g(g_map, paste0("Lag_maps_", res_name,"_LAI_filtered"), 21, 7)
 
 # bind all pairs together for faceted box/violin plots
 syc_df_tmp <- dplyr::bind_rows(syc_df_tmp)
@@ -314,9 +331,9 @@ g_scatter_box_SI_ls <- c(
 # Combine all scatter and box plots (main text)
 g_scatter_box <- plot_grid(plotlist = g_scatter_box_ls,
                            ncol=1,align="hv",labels="auto")
-print_g(g_scatter_box,"Lag_compare_agg",12,24)
+#print_g(g_scatter_box,"Lag_compare_agg",12,24)
 
 # Combine all scatter and box plots (SI figure)
 g_scatter_box_SI <- plot_grid(plotlist = g_scatter_box_SI_ls,
                               ncol=1,align="hv",labels = "auto")
-print_g(g_scatter_box_SI,"Lag_compare_SI",12,24)
+#print_g(g_scatter_box_SI,"Lag_compare_SI",12,24)
