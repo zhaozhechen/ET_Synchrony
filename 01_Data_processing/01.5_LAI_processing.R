@@ -25,6 +25,12 @@ source(here("05_Visualization/Plotting_functions.R"))
 # Import data processing functions
 source(here("01_Data_processing/AMF_processing_functions.R"))
 
+# CONUS Region dataset
+CONUS_region <- st_read("00_Data/cb_2018_us_region_20m/cb_2018_us_region_20m.shp")
+
+# CONUS division dataset
+CONUS_division <- st_read("00_Data/cb_2018_us_division_20m/cb_2018_us_division_20m.shp")
+
 # parameters to use in the SG filter
 # window size
 windowsize <- 13
@@ -200,7 +206,38 @@ site_info <- read.csv("00_Data/ameriflux_site_info_update_GS.csv")
 # Remove sites with LAI < 1 year
 site_info <- site_info %>%
   filter(!site_id %in% c("US-CS5","US-Snf","US-UTB","US-Wi0","US-Wi5","US-Wi7","US-Wi8"))
-write.csv(site_info,"00_Data/ameriflux_site_info_update_GS_LAI_filtered.csv")
+
+# Match CONUS geographic regions and divisions to site info ===============
+#site_info <- read.csv("00_Data/ameriflux_site_info_update_GS_LAI_filtered.csv")
+
+# Make site_info spatial
+site_sf <- site_info %>%
+  st_as_sf(
+    coords = c("longitude", "latitude"),
+    crs = 4326,
+    remove = FALSE
+  )
+
+# Match CRS
+CONUS_region <- st_transform(CONUS_region, st_crs(site_sf))
+CONUS_division <- st_transform(CONUS_division, st_crs(site_sf))
+
+# Add Region and Division
+site_info_region_division <- site_sf %>%
+  st_join(
+    CONUS_region %>%
+      select(Region = NAME),
+    join = st_intersects
+  ) %>%
+  st_join(
+    CONUS_division %>%
+      select(Division = NAME),
+    join = st_intersects
+  ) %>%
+  st_drop_geometry()
+
+
+write.csv(site_info_region_division,"00_Data/ameriflux_site_info_update_GS_LAI_filtered.csv")
 
 
 
