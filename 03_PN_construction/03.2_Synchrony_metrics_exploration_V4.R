@@ -114,7 +114,7 @@ syc_df <- rbind(syc_df1,syc_df2,syc_df3,syc_df4,syc_df5,syc_df6) %>%
                                                "WSA","SAV","GRA","   ",
                                                "CRO","CVM"))) %>%
   inner_join(Site_info %>%
-              select(site_ID = site_id,Soil_Type = Description),by="site_ID") %>%
+              select(site_ID = site_id,Soil_Type = Description,Region,Division),by="site_ID") %>%
   mutate(Soil_Type = factor(Soil_Type,levels=rev(c("Sand","Loamy sand",
                                                    "    ","Sandy loam",
                                                    "   ","Loam","Silt loam",
@@ -147,9 +147,35 @@ syc_df %>%
     .groups = "drop"
   )
 
+# Get mean lag in the western US, including Pacific, Mountain, West North Central, and West South Central
+lags_psi_ET_west <- syc_df$GS_best_lag[
+  syc_df$source_sink == "psi_ET" &
+    syc_df$Division %in% c("Pacific","Mountain","West South Central","West North Central")
+]
+ 
+mean(lags_psi_ET_west,na.rm=TRUE)
+sd(lags_psi_ET_west,na.rm=TRUE)
 
+lags_psi_ET_east <- syc_df$GS_best_lag[
+  syc_df$source_sink == "psi_ET" &
+    !syc_df$Division %in% c("Pacific","Mountain","West South Central","West North Central")
+]
 
+mean(lags_psi_ET_east,na.rm=TRUE)
+sd(lags_psi_ET_east,na.rm=TRUE)
 
+# Compare east and west
+wilcox.test(lags_psi_ET_west,lags_psi_ET_east)
+
+# ET -> psi
+lags_ET_psi_east <- syc_df$GS_best_lag[
+  syc_df$source_sink == "ET_psi" &
+    !syc_df$Division %in% c("Pacific","Mountain","West South Central","West North Central")
+]
+
+# VPD -> ET
+# Find long lag outliers
+syc_df[syc_df$source_sink == "TA_ET" & syc_df$GS_best_lag > 5, ]
 
 # Make plot including both lag and peak TE =========================
 g_lag_TE_AI <- plot_TE_vs_lag("AI_Class")
