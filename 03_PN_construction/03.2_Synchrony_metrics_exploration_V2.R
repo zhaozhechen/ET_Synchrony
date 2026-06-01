@@ -237,6 +237,9 @@ summary(syc_df$GS_daily_p_TE[syc_df$source_sink == "VPD_ET"])
 summary(syc_df$GS_daily_p_TE[syc_df$source_sink == "psi_ET"])
 summary(syc_df$GS_daily_p_TE[syc_df$source_sink == "TA_ET"])
 
+summary(syc_df$GS_daily_p_TE[syc_df$source_sink == "psi_ET" & syc_df$IGBP_aggregate == "Forest"])
+summary(syc_df$GS_daily_p_TE[syc_df$source_sink == "psi_ET" & syc_df$IGBP_aggregate == "Shrubland"])
+
 
 # Compare synchrony metrics across pairs (for ET as endpoint) ==========
 # Wilcoxon tests

@@ -108,6 +108,31 @@ summary(H_df$H_TA)
 summary(H_df$H_VPD)
 summary(H_df$H_ET)
 
+# Shannon entropy across environmental factors
+kruskal.test(H_ET ~ IGBP_veg, data=H_df)
+kruskal.test(H_ET ~ Koppen_clim_class, data = H_df)
+kruskal.test(H_ET ~ soil_texture, data = H_df)
+cor.test(H_df$H_ET,H_df$AI_gridded)
+
+kruskal.test(H_psi ~ IGBP_veg, data=H_df)
+kruskal.test(H_psi ~ Koppen_clim_class, data = H_df)
+kruskal.test(H_psi ~ soil_texture, data = H_df)
+cor.test(H_df$H_psi,H_df$AI_gridded)
+
+kruskal.test(H_VPD ~ IGBP_veg, data=H_df)
+kruskal.test(H_VPD ~ Koppen_clim_class, data = H_df)
+kruskal.test(H_VPD ~ soil_texture, data = H_df)
+cor.test(H_df$H_VPD,H_df$AI_gridded)
+
+kruskal.test(H_TA ~ IGBP_veg, data=H_df)
+kruskal.test(H_TA ~ Koppen_clim_class, data = H_df)
+kruskal.test(H_TA ~ soil_texture, data = H_df)
+cor.test(H_df$H_TA,H_df$AI_gridded)
+
+
+
+
+
 # Pairwise Wilcoxon tests
 H_long <- H_df %>%
   select(H_psi, H_TA, H_VPD, H_ET) %>%
